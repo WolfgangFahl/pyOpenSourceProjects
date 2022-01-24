@@ -20,6 +20,14 @@ class TicketSystem(object):
         """
         return NotImplemented
 
+    @staticmethod
+    def projectUrl(project):
+        return NotImplemented
+
+    @staticmethod
+    def ticketUrl(project):
+        return NotImplemented
+
 class GitHub(TicketSystem):
     """
     wrapper for the GitHub api
@@ -34,7 +42,7 @@ class GitHub(TicketSystem):
         params["per_page"] = 100
         params["page"] = 1
         while nextResults:
-            response = requests.request("GET", project.ticketUrl, headers=headers, data=payload, params=params)
+            response = requests.request("GET", GitHub.ticketUrl(project), headers=headers, data=payload, params=params)
             issue_records = json.loads(response.text)
             for record in issue_records:
                 tr = {
@@ -52,6 +60,14 @@ class GitHub(TicketSystem):
             else:
                 params["page"] += 1
         return issues
+
+    @staticmethod
+    def projectUrl(project):
+        return f"https://api.github.com/repos/{project.owner}/{project.id}"
+
+    @staticmethod
+    def ticketUrl(project):
+        return f"{GitHub.projectUrl(project)}/issues"
 
 
 class Jira(TicketSystem):
@@ -91,16 +107,8 @@ class OsProject(object):
         ]
         return samples
 
-    @property
-    def url(self):
-        return f"https://api.github.com/repos/{self.owner}/{self.id}"
-
-    @property
-    def ticketUrl(self):
-        return f"{self.url}/issues"
-
     def getIssues(self, **params) -> list:
-        self.ticketSystem.getIssues(self, **params)
+        return self.ticketSystem.getIssues(self, **params)
 
     def getAllTickets(self, **params):
         """
@@ -154,9 +162,9 @@ def main(_argv=None):
     import argparse
 
     parser = argparse.ArgumentParser(description='Issue2ticket')
-    parser.add_argument('-o', '--owner', help='project owner or organization')
-    parser.add_argument('-p', '--project', help='name of the project')
-    parser.add_argument('-ts', '--ticketsystem',default="github", choices=["github", "jira"], help='platform the project is hosted')
+    parser.add_argument('-o', '--owner', required=True, help='project owner or organization')
+    parser.add_argument('-p', '--project',required=True, help='name of the project')
+    parser.add_argument('-ts', '--ticketsystem',required=True, default="github", choices=["github", "jira"], help='platform the project is hosted')
     parser.add_argument('-s', '--state', choices=["open", "closed", "all"], default="all", help='only issues with the given state')
     parser.add_argument('-w', '--wiki', help='results as WikiSon Ticket list')
 
