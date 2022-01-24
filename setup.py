@@ -39,5 +39,10 @@ setup(
             'Programming Language :: Python :: 3.9'
     ],
     long_description=long_description,
-    long_description_content_type='text/markdown'
+    long_description_content_type='text/markdown',
+    entry_points={
+        'console_scripts': [
+            'issue2ticket = osprojects.osproject:main',
+        ]
+    }
 )

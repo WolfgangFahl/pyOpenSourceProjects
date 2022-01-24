@@ -15,8 +15,11 @@ class TestOsProject(BaseTest):
 
     def testOsProject(self):
         '''
+        tests if the projects details, commits and issues/tickets are correctly queried
         '''
-        osProject=OsProject()
+        osProject=OsProject(owner="WolfgangFahl", id="pyOpenSourceProjects")
+        tickets=osProject.getAllTickets()
+        self.assertTrue(len(tickets)>=2)
         commit=Commit()
         ticket=Ticket()
         pass
