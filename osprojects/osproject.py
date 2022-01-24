@@ -3,10 +3,16 @@ Created on 2022-01-24
 
 @author: wf
 '''
+from __future__ import annotations
 import datetime
+import re
+import subprocess
 import sys
+from typing import Type
+
 import requests
 import json
+
 
 class TicketSystem(object):
     """
@@ -22,10 +28,16 @@ class TicketSystem(object):
 
     @staticmethod
     def projectUrl(project):
+        """
+        url of the project
+        """
         return NotImplemented
 
     @staticmethod
     def ticketUrl(project):
+        """
+        url of the ticket/issue list
+        """
         return NotImplemented
 
 class GitHub(TicketSystem):
@@ -69,6 +81,22 @@ class GitHub(TicketSystem):
     def ticketUrl(project):
         return f"{GitHub.projectUrl(project)}/issues"
 
+    @staticmethod
+    def resolveProjectUrl(url:str) -> (str, str):
+        """
+        Resolve project url to owner and project name
+
+        Returns:
+            (owner, project)
+        """
+        pattern = r"((https?:\/\/github\.com\/)|(git@github\.com:))(?P<owner>\w+)\/(?P<project>\w+)(\.git)?"
+        match=re.match(pattern=pattern, string=url)
+        owner=match.group("owner")
+        project=match.group("project")
+        if owner and project:
+            return owner, project
+
+
 
 class Jira(TicketSystem):
     """
@@ -81,7 +109,7 @@ class OsProject(object):
     an Open Source Project
     '''
 
-    def __init__(self, owner:str, id:str, ticketSystem:TicketSystem=GitHub):
+    def __init__(self, owner:str, id:str, ticketSystem:Type[TicketSystem]=GitHub):
         '''
         Constructor
         '''
@@ -106,6 +134,14 @@ class OsProject(object):
             }
         ]
         return samples
+
+    @staticmethod
+    def fromUrl(url=str) -> OsProject:
+        if "github.com" in url:
+            owner, project = GitHub.resolveProjectUrl(url)
+            if owner and project:
+                return OsProject(owner=owner, id=project, ticketSystem=GitHub)
+        raise Exception(f"Could not resolve the url '{url}' to a OsProject object")
 
     def getIssues(self, **params) -> list:
         return self.ticketSystem.getIssues(self, **params)
@@ -162,21 +198,28 @@ def main(_argv=None):
     import argparse
 
     parser = argparse.ArgumentParser(description='Issue2ticket')
-    parser.add_argument('-o', '--owner', required=True, help='project owner or organization')
-    parser.add_argument('-p', '--project',required=True, help='name of the project')
-    parser.add_argument('-ts', '--ticketsystem',required=True, default="github", choices=["github", "jira"], help='platform the project is hosted')
+    parser.add_argument('-o', '--owner', help='project owner or organization')
+    parser.add_argument('-p', '--project', help='name of the project')
+    parser.add_argument('--repo',action='store_true' , help='get needed information form repository of current location')
+    parser.add_argument('-ts', '--ticketsystem', default="github", choices=["github", "jira"], help='platform the project is hosted')
     parser.add_argument('-s', '--state', choices=["open", "closed", "all"], default="all", help='only issues with the given state')
-    parser.add_argument('-w', '--wiki', help='results as WikiSon Ticket list')
 
-    args = parser.parse_args()
+    args = parser.parse_args(args=_argv)
     # resolve ticketsystem
     ticketSystem=GitHub
     if args.ticketsystem == "jira":
         ticketSystem=Jira
-    if args.project and args.owner:
+    if args.repo:
+        url=subprocess.check_output(["git","config", "--get", "remote.origin.url"])
+        url=url.decode().strip("\n")
+        osProject=OsProject.fromUrl(url)
+    elif args.project and args.owner:
         osProject = OsProject(owner=args.owner, id=args.project, ticketSystem=ticketSystem)
-        tickets = osProject.getIssues(state=args.state)
-        print('\n'.join([t.toWikiMarkup() for t in tickets]))
+    else:
+        print("Project information must either be provided with --owner and --project or --repo.")
+        sys.exit(0)
+    tickets = osProject.getIssues(state=args.state)
+    print('\n'.join([t.toWikiMarkup() for t in tickets]))
 
 if __name__ == '__main__':
     sys.exit(main())
