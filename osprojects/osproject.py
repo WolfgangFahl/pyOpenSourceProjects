@@ -136,7 +136,7 @@ class OsProject(object):
         return samples
 
     @staticmethod
-    def fromUrl(url=str) -> OsProject:
+    def fromUrl(url:str) -> OsProject:
         if "github.com" in url:
             owner, project = GitHub.resolveProjectUrl(url)
             if owner and project:
@@ -186,7 +186,14 @@ class Ticket(object):
         """
         Returns Ticket in wiki markup
         """
-        return f"* {{{{Ticket|number={self.number}|title={self.title}|project={self.project.id}|state={self.state}}}}}"
+        return f"""# {{{{Ticket
+|number={self.number}
+|title={self.title}
+|project={self.project.id}
+|created_at={self.createdAt if self.createdAt else ""}
+|closed_at={self.closedAt if self.closedAt else ""}
+|state={self.state}
+}}}}"""
     
 class Commit(object):
     '''
@@ -209,15 +216,12 @@ def main(_argv=None):
     ticketSystem=GitHub
     if args.ticketsystem == "jira":
         ticketSystem=Jira
-    if args.repo:
-        url=subprocess.check_output(["git","config", "--get", "remote.origin.url"])
-        url=url.decode().strip("\n")
-        osProject=OsProject.fromUrl(url)
-    elif args.project and args.owner:
+    if args.project and args.owner:
         osProject = OsProject(owner=args.owner, id=args.project, ticketSystem=ticketSystem)
     else:
-        print("Project information must either be provided with --owner and --project or --repo.")
-        sys.exit(0)
+        url = subprocess.check_output(["git", "config", "--get", "remote.origin.url"])
+        url = url.decode().strip("\n")
+        osProject = OsProject.fromUrl(url)
     tickets = osProject.getIssues(state=args.state)
     print('\n'.join([t.toWikiMarkup() for t in tickets]))
 
