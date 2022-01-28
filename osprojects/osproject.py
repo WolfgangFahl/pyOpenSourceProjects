@@ -190,8 +190,8 @@ class Ticket(object):
 |number={self.number}
 |title={self.title}
 |project={self.project.id}
-|created_at={self.createdAt if self.createdAt else ""}
-|closed_at={self.closedAt if self.closedAt else ""}
+|createdAt={self.createdAt if self.createdAt else ""}
+|closedAt={self.closedAt if self.closedAt else ""}
 |state={self.state}
 }}}}"""
     
