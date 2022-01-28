@@ -3,6 +3,7 @@ Created on 2021-08-19
 
 @author: wf
 '''
+from typing import Type
 from unittest import TestCase
 import time
 import getpass
@@ -35,6 +36,34 @@ class BaseTest(TestCase):
         publicCI=getpass.getuser() in ["travis", "runner"] 
         jenkins= "JENKINS_HOME" in os.environ;
         return publicCI or jenkins
+
+    @staticmethod
+    def getSampleDictById(entityClass:Type, keyAttr:str, keyValue)->dict:
+        """
+
+        Args:
+
+        """
+        if hasattr(entityClass, "getSamples") and callable(entityClass.getSamples):
+            samples=entityClass.getSamples()
+            if isinstance(samples, list):
+                for record in samples:
+                    if keyAttr in record and record.get(keyAttr) == keyValue:
+                        return record
+
+    @staticmethod
+    def getSampleById(entityClass: Type, keyAttr: str, keyValue):
+        """
+
+        Args:
+
+        """
+        record=BaseTest.getSampleDictById(entityClass, keyAttr, keyValue)
+        entity=entityClass()
+        for k, v in record.items():
+            setattr(entity, k, v)
+        return entity
+
 
 class Profiler:
     '''

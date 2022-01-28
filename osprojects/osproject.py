@@ -8,10 +8,10 @@ import datetime
 import re
 import subprocess
 import sys
-from typing import Type
-
 import requests
 import json
+from typing import Type, List
+from dateutil.parser import parse
 
 
 class TicketSystem(object):
@@ -20,7 +20,7 @@ class TicketSystem(object):
     """
 
     @classmethod
-    def getIssues(self, project, **kwargs):
+    def getIssues(self, project, **kwargs) -> List[Ticket]:
         """
         get issues from the TicketSystem for a project
         """
@@ -46,7 +46,7 @@ class GitHub(TicketSystem):
     """
 
     @classmethod
-    def getIssues(cls, project, **params):
+    def getIssues(cls, project, **params) -> List[Ticket]:
         payload = {}
         headers = {}
         issues = []
@@ -60,11 +60,11 @@ class GitHub(TicketSystem):
                 tr = {
                     "project": project,
                     "title": record.get('title'),
-                    "createdAt": record.get('created_at'),
-                    "closedAt": record.get('closed_at'),
+                    "createdAt": parse(record.get('created_at')) if record.get('created_at') else "",
+                    "closedAt":  parse(record.get('closed_at')) if record.get('closed_at') else "",
                     "state": record.get('state'),
                     "number": record.get('number'),
-                    "url": record.get('url'),
+                    "url": f"{cls.projectUrl(project)}/issues/{record.get('number')}",
                 }
                 issues.append(Ticket.init_from_dict(**tr))
             if len(issue_records) < 100:
@@ -75,11 +75,11 @@ class GitHub(TicketSystem):
 
     @staticmethod
     def projectUrl(project):
-        return f"https://api.github.com/repos/{project.owner}/{project.id}"
+        return f"https://github.com/{project.owner}/{project.id}"
 
     @staticmethod
     def ticketUrl(project):
-        return f"{GitHub.projectUrl(project)}/issues"
+        return f"https://api.github.com/repos/{project.owner}/{project.id}/issues"
 
     @staticmethod
     def resolveProjectUrl(url:str) -> (str, str):
@@ -109,7 +109,7 @@ class OsProject(object):
     an Open Source Project
     '''
 
-    def __init__(self, owner:str, id:str, ticketSystem:Type[TicketSystem]=GitHub):
+    def __init__(self, owner:str=None, id:str=None, ticketSystem:Type[TicketSystem]=GitHub):
         '''
         Constructor
         '''
@@ -144,7 +144,9 @@ class OsProject(object):
         raise Exception(f"Could not resolve the url '{url}' to a OsProject object")
 
     def getIssues(self, **params) -> list:
-        return self.ticketSystem.getIssues(self, **params)
+        tickets=self.ticketSystem.getIssues(self, **params)
+        tickets.sort(key=lambda r: getattr(r, "number"))
+        return tickets
 
     def getAllTickets(self, **params):
         """
@@ -162,12 +164,12 @@ class Ticket(object):
         samples=[
             {
                 "number":2,
-                "title":"Get Tickets in Wiki notation from github API",
-                "createdAt": datetime.datetime(year=2022, month=1, day=24, hour=7, minute=41, second=29),
-                "closedAt": None,  # Not closed yet
-                "url":"https://github.com/WolfgangFahl/pyOpenSourceProjects/issues/1",
-                "project":"pyOpenSourceProjects",
-                "state":"closed"
+                "title": "Get Tickets in Wiki notation from github API",
+                "createdAt": datetime.datetime.fromisoformat("2022-01-24 07:41:29+00:00"),
+                "closedAt": datetime.datetime.fromisoformat("2022-01-25 07:43:04+00:00"),
+                "url": "https://github.com/WolfgangFahl/pyOpenSourceProjects/issues/2",
+                "project": "pyOpenSourceProjects",
+                "state": "closed"
             }
         ]
         return samples

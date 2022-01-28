@@ -6,7 +6,6 @@ Created on 2022-01-24
 import io
 import unittest
 from contextlib import redirect_stdout
-
 from tests.basetest import BaseTest
 from osprojects.osproject import OsProject, Commit, Ticket, main, GitHub
 
@@ -21,9 +20,11 @@ class TestOsProject(BaseTest):
         '''
         tests if the projects details, commits and issues/tickets are correctly queried
         '''
-        osProject=OsProject(owner="WolfgangFahl", id="pyOpenSourceProjects")
+        osProject=self.getSampleById(OsProject,"id", "pyOpenSourceProjects")
         tickets=osProject.getAllTickets()
-        self.assertTrue(len(tickets)>=2)
+        expectedTicket=self.getSampleById(Ticket, "number", 2)
+        expectedTicket.project=osProject
+        self.assertDictEqual(expectedTicket.__dict__, tickets[1].__dict__)
         commit=Commit()
         ticket=Ticket()
         pass
