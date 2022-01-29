@@ -43,6 +43,7 @@ setup(
     entry_points={
         'console_scripts': [
             'issue2ticket = osprojects.osproject:main',
+            'gitlog2wiki = osprojects.osproject:gitlog2wiki',
         ]
     }
 )

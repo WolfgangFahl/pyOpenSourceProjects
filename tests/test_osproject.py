@@ -7,7 +7,7 @@ import io
 import unittest
 from contextlib import redirect_stdout
 from tests.basetest import BaseTest
-from osprojects.osproject import OsProject, Commit, Ticket, main, GitHub
+from osprojects.osproject import OsProject, Commit, Ticket, main, GitHub, gitlog2wiki
 
 
 class TestOsProject(BaseTest):
@@ -24,10 +24,20 @@ class TestOsProject(BaseTest):
         tickets=osProject.getAllTickets()
         expectedTicket=self.getSampleById(Ticket, "number", 2)
         expectedTicket.project=osProject
-        self.assertDictEqual(expectedTicket.__dict__, tickets[1].__dict__)
+        self.assertDictEqual(expectedTicket.__dict__, tickets[-2].__dict__)
         commit=Commit()
         ticket=Ticket()
         pass
+
+    def testGetCommits(self):
+        """
+        tests extraction of commits for a repository
+        """
+        osProject=self.getSampleById(OsProject,"id", "pyOpenSourceProjects")
+        commits = osProject.getCommits()
+        expectedCommit = self.getSampleById(Commit, "hash", "106254f")
+        self.assertTrue(len(commits)>15)
+        self.assertDictEqual(expectedCommit.__dict__, commits[0].__dict__)
 
     def testCmdLine(self):
         """
@@ -38,13 +48,19 @@ class TestOsProject(BaseTest):
             ["--repo"],
         ]
         for params in testParams:
-            f = io.StringIO()
-            with redirect_stdout(f):
-                main(params)
-            f.seek(0)
-            output=f.read()
+            output=self.captureOutput(main, params)
             self.assertTrue(len(output.split("\n"))>=2) # test number of Tickets
             self.assertIn("{{Ticket", output)
+
+    def testGitlog2IssueCmdline(self):
+        """
+        tests gitlog2issue
+        """
+        commit = self.getSampleById(Commit, "hash", "106254f")
+        expectedCommitMarkup = commit.toWikiMarkup()
+        output=self.captureOutput(gitlog2wiki)
+        outputLines=output.split("\n")
+        self.assertTrue(expectedCommitMarkup in outputLines)
 
 class TestGitHub(BaseTest):
     """
@@ -65,6 +81,20 @@ class TestGitHub(BaseTest):
             owner, project = GitHub.resolveProjectUrl(url)
             self.assertEqual("WolfgangFahl", owner)
             self.assertEqual("pyOpenSourceProjects", project)
+
+
+class TestCommit(BaseTest):
+    """
+    Tests Commit class
+    """
+
+    def testToWikiMarkup(self):
+        """
+        tests toWikiMarkup
+        """
+        commit=self.getSampleById(Commit, "hash", "106254f")
+        expectedMarkup="{{commit|host=https://github.com/WolfgangFahl/pyOpenSourceProjects|path=|project=pyOpenSourceProjects|subject=Initial commit|name=GitHub|date=2022-01-24 07:02:55+01:00|hash=106254f|storemode=subobject|viewmode=line}}"
+        self.assertEqual(expectedMarkup, commit.toWikiMarkup())
 
 
 if __name__ == "__main__":

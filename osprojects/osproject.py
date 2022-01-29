@@ -20,21 +20,28 @@ class TicketSystem(object):
     """
 
     @classmethod
-    def getIssues(self, project, **kwargs) -> List[Ticket]:
+    def getIssues(self, project:OsProject, **kwargs) -> List[Ticket]:
         """
         get issues from the TicketSystem for a project
         """
         return NotImplemented
 
     @staticmethod
-    def projectUrl(project):
+    def projectUrl(project:OsProject):
         """
         url of the project
         """
         return NotImplemented
 
     @staticmethod
-    def ticketUrl(project):
+    def ticketUrl(project:OsProject):
+        """
+        url of the ticket/issue list
+        """
+        return NotImplemented
+
+    @staticmethod
+    def commitUrl(project: OsProject, id:str):
         """
         url of the ticket/issue list
         """
@@ -46,7 +53,7 @@ class GitHub(TicketSystem):
     """
 
     @classmethod
-    def getIssues(cls, project, **params) -> List[Ticket]:
+    def getIssues(cls, project:OsProject, **params) -> List[Ticket]:
         payload = {}
         headers = {}
         issues = []
@@ -74,12 +81,16 @@ class GitHub(TicketSystem):
         return issues
 
     @staticmethod
-    def projectUrl(project):
+    def projectUrl(project:OsProject):
         return f"https://github.com/{project.owner}/{project.id}"
 
     @staticmethod
-    def ticketUrl(project):
+    def ticketUrl(project:OsProject):
         return f"https://api.github.com/repos/{project.owner}/{project.id}/issues"
+
+    @staticmethod
+    def commitUrl(project:OsProject, id:str):
+        return f"{GitHub.projectUrl(project)}/commit/{id}"
 
     @staticmethod
     def resolveProjectUrl(url:str) -> (str, str):
@@ -135,8 +146,21 @@ class OsProject(object):
         ]
         return samples
 
-    @staticmethod
-    def fromUrl(url:str) -> OsProject:
+    @classmethod
+    def fromRepo(cls):
+        """
+        Init OsProject from repo in current working directory
+        """
+        url = subprocess.check_output(["git", "config", "--get", "remote.origin.url"])
+        url = url.decode().strip("\n")
+        osProject = cls.fromUrl(url)
+        return osProject
+
+    @classmethod
+    def fromUrl(cls, url:str) -> OsProject:
+        """
+        Init OsProject from given url
+        """
         if "github.com" in url:
             owner, project = GitHub.resolveProjectUrl(url)
             if owner and project:
@@ -153,7 +177,27 @@ class OsProject(object):
         Get all Tickets of the project closed ond open ones
         """
         return self.getIssues(state='all', **params)
-        
+
+    def getCommits(self) -> List[Commit]:
+        commits=[]
+        gitlogCmd=['git', '--no-pager', 'log', '--reverse', r'--pretty=format:{"name":"%cn","date":"%cI","hash":"%h"}']
+        gitLogCommitSubject=['git', 'log', '--format=%s', '-n', '1']
+        rawCommitLogs=subprocess.check_output(gitlogCmd).decode()
+        for rawLog in rawCommitLogs.split("\n"):
+            log=json.loads(rawLog)
+            if log.get("date", None) is not None:
+                log["date"]=datetime.datetime.fromisoformat(log["date"])
+            log["project"]=self.id
+            log["host"]=self.ticketSystem.projectUrl(self)
+            log["path"] = ""
+            log["subject"] = subprocess.check_output([*gitLogCommitSubject, log["hash"]])[:-1].decode() # seperate query to avoid json escaping issues
+            commit=Commit()
+            for k,v in log.items():
+                setattr(commit, k, v)
+            commits.append(commit)
+        return commits
+
+
 class Ticket(object):
     '''
     a Ticket
@@ -202,6 +246,38 @@ class Commit(object):
     a commit
     '''
 
+    @staticmethod
+    def getSamples():
+        samples=[
+            {
+                "host":"https://github.com/WolfgangFahl/pyOpenSourceProjects",
+                "path": "",
+                "project": "pyOpenSourceProjects",
+                "subject": "Initial commit",
+                "name": "GitHub",  #TicketSystem
+                "date": datetime.datetime.fromisoformat("2022-01-24 07:02:55+01:00"),
+                "hash": "106254f"
+            }
+        ]
+        return samples
+
+    def toWikiMarkup(self):
+        """
+        Returns Commit as wiki markup
+        """
+        params=[f"{attr}={getattr(self, attr, '')}" for attr in self.getSamples()[0].keys()]
+        markup=f"{{{{commit|{'|'.join(params)}|storemode=subobject|viewmode=line}}}}"
+        return markup
+
+def gitlog2wiki(_argv=None):
+    """
+    cmdline interface to get gitlog entires in wiki markup
+    """
+    osProject = OsProject.fromRepo()
+    commits=osProject.getCommits()
+    print('\n'.join([c.toWikiMarkup() for c in commits]))
+
+
 
 def main(_argv=None):
     import argparse
@@ -221,11 +297,10 @@ def main(_argv=None):
     if args.project and args.owner:
         osProject = OsProject(owner=args.owner, id=args.project, ticketSystem=ticketSystem)
     else:
-        url = subprocess.check_output(["git", "config", "--get", "remote.origin.url"])
-        url = url.decode().strip("\n")
-        osProject = OsProject.fromUrl(url)
+        osProject = OsProject.fromRepo()
     tickets = osProject.getIssues(state=args.state)
     print('\n'.join([t.toWikiMarkup() for t in tickets]))
 
 if __name__ == '__main__':
-    sys.exit(main())
+    #sys.exit(main())
+    sys.exit(gitlog2wiki())

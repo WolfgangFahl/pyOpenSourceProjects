@@ -3,7 +3,9 @@ Created on 2021-08-19
 
 @author: wf
 '''
-from typing import Type
+import io
+from contextlib import redirect_stdout
+from typing import Type, Callable
 from unittest import TestCase
 import time
 import getpass
@@ -63,6 +65,23 @@ class BaseTest(TestCase):
         for k, v in record.items():
             setattr(entity, k, v)
         return entity
+
+    @staticmethod
+    def captureOutput(fn:Callable, *args, **kwargs) -> str:
+        """
+        Captures stdout put of the given function
+
+        Args:
+            fn(callable): function to call
+        Returns:
+            str
+        """
+        f = io.StringIO()
+        with redirect_stdout(f):
+            fn(*args, **kwargs)
+        f.seek(0)
+        output = f.read()
+        return output
 
 
 class Profiler:
