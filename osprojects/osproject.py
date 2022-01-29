@@ -145,7 +145,7 @@ class OsProject(object):
 
     def getIssues(self, **params) -> list:
         tickets=self.ticketSystem.getIssues(self, **params)
-        tickets.sort(key=lambda r: getattr(r, "number"))
+        tickets.sort(key=lambda r: getattr(r, "number"), reverse=True)
         return tickets
 
     def getAllTickets(self, **params):
