@@ -33,6 +33,8 @@ class TestOsProject(BaseTest):
         """
         tests extraction of commits for a repository
         """
+        if self.inPublicCI():
+            return
         osProject=self.getSampleById(OsProject,"id", "pyOpenSourceProjects")
         commits = osProject.getCommits()
         expectedCommit = self.getSampleById(Commit, "hash", "106254f")
@@ -56,6 +58,8 @@ class TestOsProject(BaseTest):
         """
         tests gitlog2issue
         """
+        if self.inPublicCI():
+            return
         commit = self.getSampleById(Commit, "hash", "106254f")
         expectedCommitMarkup = commit.toWikiMarkup()
         output=self.captureOutput(gitlog2wiki)
