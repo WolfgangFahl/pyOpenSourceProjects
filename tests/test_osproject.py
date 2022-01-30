@@ -3,9 +3,7 @@ Created on 2022-01-24
 
 @author: wf
 '''
-import io
 import unittest
-from contextlib import redirect_stdout
 from tests.basetest import BaseTest
 from osprojects.osproject import OsProject, Commit, Ticket, main, GitHub, gitlog2wiki
 
@@ -75,16 +73,32 @@ class TestGitHub(BaseTest):
         """
         tests the resolving of the project url
         """
-        urlVariants=[
-            "https://github.com/WolfgangFahl/pyOpenSourceProjects",
-            "http://github.com/WolfgangFahl/pyOpenSourceProjects",
-            "git@github.com:WolfgangFahl/pyOpenSourceProjects"
+        urlCases=[
+            {
+                "owner": "WolfgangFahl",
+                "project": "pyOpenSourceProjects",
+                "variants": [
+                  "https://github.com/WolfgangFahl/pyOpenSourceProjects",
+                  "http://github.com/WolfgangFahl/pyOpenSourceProjects",
+                  "git@github.com:WolfgangFahl/pyOpenSourceProjects",
+                ]
+            }, {
+                "owner": "ad-freiburg",
+                "project": "qlever",
+                "variants": [
+                    "https://github.com/ad-freiburg/qlever"
+                ]
+            }
         ]
-        urlVariants=[*urlVariants, *[f"{u}.git" for u in urlVariants]]
-        for url in urlVariants:
-            owner, project = GitHub.resolveProjectUrl(url)
-            self.assertEqual("WolfgangFahl", owner)
-            self.assertEqual("pyOpenSourceProjects", project)
+        for urlCase in urlCases:
+            urlVariants=urlCase["variants"]
+            expectedOwner=urlCase["owner"]
+            expectedProject=urlCase["project"]
+            urlVariants=[*urlVariants, *[f"{u}.git" for u in urlVariants]]
+            for url in urlVariants:
+                owner, project = GitHub.resolveProjectUrl(url)
+                self.assertEqual(expectedOwner, owner)
+                self.assertEqual(expectedProject, project)
 
 
 class TestCommit(BaseTest):
