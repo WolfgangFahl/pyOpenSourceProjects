@@ -94,9 +94,9 @@ class TestGitHub(BaseTest):
             urlVariants=urlCase["variants"]
             expectedOwner=urlCase["owner"]
             expectedProject=urlCase["project"]
-            urlVariants=[*urlVariants, *[f"{u}.git" for u in urlVariants]]
             for url in urlVariants:
-                owner, project = GitHub.resolveProjectUrl(url)
+                giturl=f"{url}.git" 
+                owner, project = GitHub.resolveProjectUrl(giturl)
                 self.assertEqual(expectedOwner, owner)
                 self.assertEqual(expectedProject, project)
 

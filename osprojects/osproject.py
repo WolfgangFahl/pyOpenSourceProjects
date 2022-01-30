@@ -101,13 +101,12 @@ class GitHub(TicketSystem):
             (owner, project)
         """
         # https://www.rfc-editor.org/rfc/rfc3986#appendix-B
-        pattern = r"((https?:\/\/github\.com\/)|(git@github\.com:))(?P<owner>\w+)\/(?P<project>\w+)(\.git)?"
+        pattern = r"((https?:\/\/github\.com\/)|(git@github\.com:))(?P<owner>[^/?#]+)\/(?P<project>[^\./?#]+)(\.git)?"
         match=re.match(pattern=pattern, string=url)
         owner=match.group("owner")
         project=match.group("project")
         if owner and project:
             return owner, project
-
 
 class Jira(TicketSystem):
     """
