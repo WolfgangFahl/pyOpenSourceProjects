@@ -11,7 +11,7 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='pyOpenSourceProjects',
-    version='0.0.6',
+    version='0.0.7',
 
     packages=['osprojects',],
     author='Wolfgang Fahl',
@@ -28,7 +28,7 @@ setup(
     license='Apache License',
     description='',
     install_requires=[
-          'pyLodStorage~=0.0.85',
+          'pyLodStorage~=0.1.14',
           'pyFlaskBootstrap4~=0.4.2',
           'py-3rdparty-mediawiki~=0.5.3',
     ],
