@@ -28,9 +28,8 @@ setup(
     license='Apache License',
     description='',
     install_requires=[
-          'pyLodStorage~=0.1.14',
-          'pyFlaskBootstrap4~=0.4.2',
-          'py-3rdparty-mediawiki~=0.5.3',
+          'pyLodStorage~=0.1.15',
+          'py-3rdparty-mediawiki~=0.5.4',
     ],
     classifiers=[
             'Programming Language :: Python',
