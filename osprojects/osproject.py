@@ -276,8 +276,6 @@ def gitlog2wiki(_argv=None):
     commits=osProject.getCommits()
     print('\n'.join([c.toWikiMarkup() for c in commits]))
 
-
-
 def main(_argv=None):
     import argparse
 
@@ -287,6 +285,8 @@ def main(_argv=None):
     parser.add_argument('--repo',action='store_true' , help='get needed information form repository of current location')
     parser.add_argument('-ts', '--ticketsystem', default="github", choices=["github", "jira"], help='platform the project is hosted')
     parser.add_argument('-s', '--state', choices=["open", "closed", "all"], default="all", help='only issues with the given state')
+    parser.add_argument('-V', '--version', action='version',
+                    version='gitlog2wiki 0.1')
 
     args = parser.parse_args(args=_argv)
     # resolve ticketsystem
