@@ -12,7 +12,7 @@ import requests
 import json
 from typing import Type, List
 from dateutil.parser import parse
-
+import argparse
 
 class TicketSystem(object):
     """
@@ -270,15 +270,19 @@ class Commit(object):
 
 def gitlog2wiki(_argv=None):
     """
-    cmdline interface to get gitlog entires in wiki markup
+    cmdline interface to get gitlog entries in wiki markup
     """
+    parser = argparse.ArgumentParser(description='gitlog2wiki')
+    args = parser.parse_args(args=_argv)
+
     osProject = OsProject.fromRepo()
     commits=osProject.getCommits()
     print('\n'.join([c.toWikiMarkup() for c in commits]))
 
 def main(_argv=None):
-    import argparse
-
+    """
+    main command line entry point
+    """
     parser = argparse.ArgumentParser(description='Issue2ticket')
     parser.add_argument('-o', '--owner', help='project owner or organization')
     parser.add_argument('-p', '--project', help='name of the project')

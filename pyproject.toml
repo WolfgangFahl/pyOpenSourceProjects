@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pyOpenSourceProjects"
+
+authors = [
+  { name = "Wolfgang Fahl", email = "wf@bitplan.com" }
+]
+maintainers = [
+  { name = "Wolfgang Fahl", email = "wf@bitplan.com" }
+]
+readme = "README.md"
+license = "Apache-2.0"
+
+dependencies = [
+  "pyLodStorage>=0.4.7",
+  "py-3rdparty-mediawiki>=0.6.1"
+]
+requires-python = ">=3.7"
+
+classifiers = [
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9"
+]
+
+dynamic = ["version", "description"]
+
+[project.urls]
+Home = "https://github.com/WolfgangFahl/pyOpenSourceProjects"
+Documentation = "http://wiki.bitplan.com/index.php/pyOpenSourceProjects"
+Source = "https://github.com/WolfgangFahl/pyOpenSourceProjects"
+
+[tool.hatch.version]
+path = "osprojects/__init__.py"
+
+[project.optional-dependencies]
+test = []
+
+[tool.hatch.build.targets.wheel]
+packages = [
+  "osprojects",
+]
+
+[project.scripts]
+issue2ticket = "osprojects.osproject:main"
+gitlog2wiki = "osprojects.osproject:gitlog2wiki"
