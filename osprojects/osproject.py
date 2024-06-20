@@ -311,7 +311,8 @@ def gitlog2wiki(_argv=None):
     cmdline interface to get gitlog entries in wiki markup
     """
     parser = argparse.ArgumentParser(description="gitlog2wiki")
-    args = parser.parse_args(args=_argv)
+    if _argv:
+        _args = parser.parse_args(args=_argv)
 
     osProject = OsProject.fromRepo()
     commits = osProject.getCommits()
