@@ -71,6 +71,17 @@ class GitHub(TicketSystem):
         
         # Return None if no token file is found
         return None
+    
+    @classmethod
+    def prepare_headers(cls, access_token: str = None) -> dict:
+        """
+        Prepare authorization headers for GitHub API requests.
+        """
+        if access_token is None:
+            access_token = cls.load_access_token()
+
+        headers = {'Authorization': f'token {access_token}'} if access_token else {}
+        return headers
 
     @classmethod
     def getIssues(cls, 
@@ -79,13 +90,7 @@ class GitHub(TicketSystem):
         limit: int = None,
         **params) -> List[Ticket]:
         payload = {}
-        headers = {}
-        if access_token is None:
-            access_token = cls.load_access_token()
-        if access_token:
-            headers = {
-                'Authorization': f'token {access_token}'
-            }
+        headers = cls.prepare_headers(access_token)
         issues = []
         nextResults = True
         params["per_page"] = 100
@@ -129,6 +134,20 @@ class GitHub(TicketSystem):
             else:
                 params["page"] += 1
         return issues
+    
+    @classmethod
+    def getComments(cls, project: OsProject, issue_number: int, access_token: str = None) -> List[dict]:
+        """
+        Fetch all comments for a specific issue number from GitHub.
+        """
+        headers = cls.prepare_headers(access_token)
+        comments_url = GitHub.commentUrl(project, issue_number)
+        response = requests.get(comments_url, headers=headers)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Failed to fetch comments: {response.status_code} - {response.text}")
+        return []
 
     @staticmethod
     def projectUrl(project: OsProject):
@@ -141,6 +160,14 @@ class GitHub(TicketSystem):
     @staticmethod
     def commitUrl(project: OsProject, id: str):
         return f"{GitHub.projectUrl(project)}/commit/{id}"
+    
+    @staticmethod
+    def commentUrl(project: OsProject, issue_number: int):
+        """
+        Construct the URL for accessing comments of a specific issue.
+        """
+        return f"https://api.github.com/repos/{project.owner}/{project.id}/issues/{issue_number}/comments"
+
 
     @staticmethod
     def resolveProjectUrl(url: str) -> (str, str):
