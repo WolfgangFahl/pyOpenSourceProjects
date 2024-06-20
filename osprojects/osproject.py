@@ -4,7 +4,7 @@ Created on 2022-01-24
 @author: wf
 """
 from __future__ import annotations
-
+import os
 import argparse
 import datetime
 import json
@@ -55,15 +55,42 @@ class GitHub(TicketSystem):
     """
     wrapper for the GitHub api
     """
+    @classmethod
+    def load_access_token(cls)->str:
+        """
+        if $HOME/.github/access_token.json exists read the token from there
+        """
+        # Specify the path to the access token file
+        token_file_path = os.path.join(os.getenv('HOME'), '.github', 'access_token.json')
+        
+        # Check if the file exists and read the token
+        if os.path.exists(token_file_path):
+            with open(token_file_path, 'r') as token_file:
+                token_data = json.load(token_file)
+                return token_data.get('access_token')
+        
+        # Return None if no token file is found
+        return None
 
     @classmethod
-    def getIssues(cls, project: OsProject, **params) -> List[Ticket]:
+    def getIssues(cls, 
+        project: OsProject, 
+        access_token:str=None,
+        limit: int = None,
+        **params) -> List[Ticket]:
         payload = {}
         headers = {}
+        if access_token is None:
+            access_token = cls.load_access_token()
+        if access_token:
+            headers = {
+                'Authorization': f'token {access_token}'
+            }
         issues = []
         nextResults = True
         params["per_page"] = 100
         params["page"] = 1
+        fetched_count = 0  # Counter to track the number of issues fetched
         while nextResults:
             response = requests.request(
                 "GET",
@@ -72,11 +99,14 @@ class GitHub(TicketSystem):
                 data=payload,
                 params=params,
             )
+            if response.status_code == 403 and 'rate limit' in response.text:
+                raise Exception("rate limit - you might want to use an access token")
             issue_records = json.loads(response.text)
             for record in issue_records:
                 tr = {
                     "project": project,
                     "title": record.get("title"),
+                    "body": record.get("body", ""),  
                     "createdAt": parse(record.get("created_at"))
                     if record.get("created_at")
                     else "",
@@ -88,6 +118,12 @@ class GitHub(TicketSystem):
                     "url": f"{cls.projectUrl(project)}/issues/{record.get('number')}",
                 }
                 issues.append(Ticket.init_from_dict(**tr))
+                fetched_count += 1
+                # Check if we have reached the limit
+                if limit is not None and fetched_count >= limit:
+                    nextResults=False
+                    break
+
             if len(issue_records) < 100:
                 nextResults = False
             else:
@@ -191,11 +227,15 @@ class OsProject(object):
         tickets.sort(key=lambda r: getattr(r, "number"), reverse=True)
         return tickets
 
-    def getAllTickets(self, **params):
+    def getAllTickets(self, limit:int=None,**params):
         """
-        Get all Tickets of the project closed and open ones
+        Get all Tickets of the project -  closed and open ones
+        
+        Args:
+            limit(int): if set limit the number of tickets retrieved
         """
-        return self.getIssues(state="all", **params)
+        issues= self.getIssues(state="all",limit=limit, **params)
+        return issues
 
     def getCommits(self) -> List[Commit]:
         commits = []
