@@ -19,7 +19,7 @@ class Check:
 
     @property
     def marker(self) -> str:
-        return f"✅ {self.msg}" if self.ok else f"❌  {self.msg}"
+        return f"✅" if self.ok else f"❌"
 
 class CheckOS:
     """
@@ -52,7 +52,7 @@ class CheckOS:
                 "[![PyPI Status](https://img.shields.io/pypi/v/{self.project.id}.svg)](https://pypi.python.org/pypi/{self.project.id}/)",
                 "[![GitHub issues](https://img.shields.io/github/issues/{self.project.fqid}.svg)](https://github.com/{self.project.fqid}/issues)",
                 "[![GitHub closed issues](https://img.shields.io/github/issues-closed/{self.project.fqid}.svg)](https://github.com/{self.project.fqid}/issues/?q=is%3Aissue+is%3Aclosed)",
-                "[![API Docs](https://img.shields.io/badge/API-Documentation-blue)](https://{self.project.fqid}.github.io/{self.project.id}/)",
+                "[![API Docs](https://img.shields.io/badge/API-Documentation-blue)](https://{self.project.owner}.github.io/{self.project.id}/)",
                 "[![License](https://img.shields.io/github/license/{self.project.fqid}.svg)](https://www.apache.org/licenses/LICENSE-2.0)"
             ]
             for line in badge_lines:
@@ -69,17 +69,19 @@ class CheckOS:
         checks = []
         checks.append(self.check_local())
         checks.extend(self.check_readme())
-
+        total=len(checks)
         ok_checks = [check for check in checks if check.ok]
-        not_ok_checks = [check for check in checks if not check.ok]
+        failed_checks = [check for check in checks if not check.ok]
+        #ok_count=len(ok_checks)
+        failed_count=len(failed_checks)
+        summary=f"❌ {failed_count}/{total}" if failed_count>0 else "✅"
+        print(f"{self.project} {summary}: {self.project.url}")
+        if failed_count>0:
+            sorted_checks = ok_checks + failed_checks if self.verbose else failed_checks
 
-        print(f"{self.project} ✅: {len(ok_checks)}/❌: {len(not_ok_checks)} {self.project.url}")
-
-        sorted_checks = ok_checks + not_ok_checks
-
-        for i,check in enumerate(sorted_checks):
-            print(f"    {i+1:3}{check.marker}:{check.msg}")
-        return checks
+            for i,check in enumerate(sorted_checks):
+                print(f"    {i+1:3}{check.marker}:{check.msg}")
+            return checks
 
 def main(_argv=None):
     """

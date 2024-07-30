@@ -44,9 +44,11 @@ path = "osprojects/__init__.py"
 test = []
 
 [tool.hatch.build.targets.wheel]
-packages = [
-  "osprojects",
-]
+only-include = ["osprojects"]
+
+[tool.hatch.build.targets.wheel.sources]
+"osprojects" = "osprojects"
+
 
 [project.scripts]
 issue2ticket = "osprojects.osproject:main"
