@@ -331,8 +331,13 @@ class OsProject(object):
         self.stars = stars
         self.forks = forks
 
+    @property
+    def fqid(self):
+        fqid=f"{self.owner}/{self.id}"
+        return fqid
+
     def __str__(self):
-        return f"{self.owner}/{self.id}"
+        return self.fqid
 
     @staticmethod
     def getSamples():
