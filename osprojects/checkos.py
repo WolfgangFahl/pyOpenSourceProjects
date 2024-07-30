@@ -46,18 +46,19 @@ class CheckOS:
         if readme_exists.ok:
             with open(readme_path, "r") as readme_file:
                 readme_content = readme_file.read()
-                badge_urls = [
-                    #"https://readthedocs.org/projects/pylodstorage/badge/?version=latest",
-                    f"https://img.shields.io/pypi/pyversions/{self.project.id}",
-                    f"https://github.com/{self.project.fqid}/actions/workflows/build.yml/badge.svg",
-                    f"https://img.shields.io/pypi/v/{self.project.id}.svg",
-                    f"https://pepy.tech/badge/{self.project.id}",
-                    f"https://img.shields.io/github/issues/{self.project.fqid}.svg",
-                    f"https://img.shields.io/github/issues-closed/{self.project.fqid}.svg",
-                    f"https://img.shields.io/github/license/{self.project.fqid}.svg"
-                ]
-                for url in badge_urls:
-                    checks.append(Check(ok=url in readme_content,msg=url))
+                badge_lines = [
+                "[![pypi](https://img.shields.io/pypi/pyversions/{self.project.id})](https://pypi.org/project/{self.project.id}/)",
+                "[![Github Actions Build](https://github.com/{self.project.fqid}/actions/workflows/build.yml/badge.svg)](https://github.com/{self.project.fqid}/actions/workflows/build.yml)",
+                "[![PyPI Status](https://img.shields.io/pypi/v/{self.project.id}.svg)](https://pypi.python.org/pypi/{self.project.id}/)",
+                "[![GitHub issues](https://img.shields.io/github/issues/{self.project.fqid}.svg)](https://github.com/{self.project.fqid}/issues)",
+                "[![GitHub closed issues](https://img.shields.io/github/issues-closed/{self.project.fqid}.svg)](https://github.com/{self.project.fqid}/issues/?q=is%3Aissue+is%3Aclosed)",
+                "[![API Docs](https://img.shields.io/badge/API-Documentation-blue)](https://{self.project.fqid}.github.io/{self.project.id}/)",
+                "[![License](https://img.shields.io/github/license/{self.project.fqid}.svg)](https://www.apache.org/licenses/LICENSE-2.0)"
+            ]
+            for line in badge_lines:
+                formatted_line = line.format(self=self)
+                checks.append(Check(ok=formatted_line in readme_content, msg=formatted_line))
+
 
         return checks
 
@@ -72,16 +73,12 @@ class CheckOS:
         ok_checks = [check for check in checks if check.ok]
         not_ok_checks = [check for check in checks if not check.ok]
 
-        print(f"✅: {len(ok_checks)}")
-        print(f"❌: {len(not_ok_checks)}")
+        print(f"{self.project} ✅: {len(ok_checks)}/❌: {len(not_ok_checks)} {self.project.url}")
 
         sorted_checks = ok_checks + not_ok_checks
 
         for i,check in enumerate(sorted_checks):
             print(f"    {i+1:3}{check.marker}:{check.msg}")
-
-        if self.verbose:
-            print (f"git clone {self.project.url}")
         return checks
 
 def main(_argv=None):
