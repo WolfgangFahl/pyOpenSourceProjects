@@ -3,15 +3,17 @@ Created on 2022-01-24
 
 @author: wf
 """
+
 from __future__ import annotations
-import os
+
 import argparse
 import datetime
 import json
+import os
 import re
 import subprocess
 import sys
-from typing import List, Type
+from typing import List, Optional, Type
 
 import requests
 from dateutil.parser import parse
@@ -55,23 +57,26 @@ class GitHub(TicketSystem):
     """
     wrapper for the GitHub api
     """
+
     @classmethod
-    def load_access_token(cls)->str:
+    def load_access_token(cls) -> str:
         """
         if $HOME/.github/access_token.json exists read the token from there
         """
         # Specify the path to the access token file
-        token_file_path = os.path.join(os.getenv('HOME'), '.github', 'access_token.json')
-        
+        token_file_path = os.path.join(
+            os.getenv("HOME"), ".github", "access_token.json"
+        )
+
         # Check if the file exists and read the token
         if os.path.exists(token_file_path):
-            with open(token_file_path, 'r') as token_file:
+            with open(token_file_path, "r") as token_file:
                 token_data = json.load(token_file)
-                return token_data.get('access_token')
-        
+                return token_data.get("access_token")
+
         # Return None if no token file is found
         return None
-    
+
     @classmethod
     def prepare_headers(cls, access_token: str = None) -> dict:
         """
@@ -80,15 +85,108 @@ class GitHub(TicketSystem):
         if access_token is None:
             access_token = cls.load_access_token()
 
-        headers = {'Authorization': f'token {access_token}'} if access_token else {}
+        headers = {"Authorization": f"token {access_token}"} if access_token else {}
         return headers
 
     @classmethod
-    def getIssues(cls, 
-        project: OsProject, 
-        access_token:str=None,
-        limit: int = None,
-        **params) -> List[Ticket]:
+    def list_projects_as_os_projects(
+        cls, owner: str, access_token: str = None, project_name: Optional[str] = None
+    ) -> List[OsProject]:
+        """
+        List all public repositories for a given owner and return them as OsProject instances.
+
+        Args:
+            owner (str): The GitHub username or organization name.
+            access_token (str, optional): GitHub personal access token for authentication.
+            project_name (str, optional): If provided, return only this specific project.
+
+        Returns:
+            List[OsProject]: A list of OsProject instances representing the repositories.
+        """
+        headers = cls.prepare_headers(access_token)
+
+        if project_name:
+            url = f"https://api.github.com/repos/{owner}/{project_name}"
+            response = requests.get(url, headers=headers)
+            if response.status_code != 200:
+                raise Exception(
+                    f"Failed to fetch repository: {response.status_code} - {response.text}"
+                )
+            repos = [response.json()]
+        else:
+            url = f"https://api.github.com/users/{owner}/repos"
+            params = {
+                "type": "all",
+                "per_page": 100,
+            }  # Include all repo types, 100 per page
+            all_repos = []
+            page = 1
+
+            while True:
+                params["page"] = page
+                response = requests.get(url, headers=headers, params=params)
+
+                if response.status_code != 200:
+                    raise Exception(
+                        f"Failed to fetch repositories: {response.status_code} - {response.text}"
+                    )
+
+                repos = response.json()
+                if not repos:
+                    break  # No more repositories to fetch
+
+                all_repos.extend(repos)
+                page += 1
+
+            repos = all_repos
+
+        return [
+            OsProject(
+                owner=owner,
+                id=repo["name"],
+                ticketSystem=cls,
+                title=repo["name"],
+                url=repo["html_url"],
+                description=repo["description"],
+                language=repo["language"],
+                created_at=datetime.datetime.fromisoformat(
+                    repo["created_at"].rstrip("Z")
+                ),
+                updated_at=datetime.datetime.fromisoformat(
+                    repo["updated_at"].rstrip("Z")
+                ),
+                stars=repo["stargazers_count"],
+                forks=repo["forks_count"],
+            )
+            for repo in repos
+        ]
+
+    @classmethod
+    def get_project(
+        cls, owner: str, project_id: str, access_token: str = None
+    ) -> OsProject:
+        """
+        Get a specific project as an OsProject instance.
+
+        Args:
+            owner (str): The GitHub username or organization name.
+            project_id (str): The name of the project.
+            access_token (str, optional): GitHub personal access token for authentication.
+
+        Returns:
+            OsProject: An OsProject instance representing the repository.
+        """
+        projects = cls.list_projects_as_os_projects(
+            owner, access_token, project_name=project_id
+        )
+        if projects:
+            return projects[0]
+        raise Exception(f"Project {owner}/{project_id} not found")
+
+    @classmethod
+    def getIssues(
+        cls, project: OsProject, access_token: str = None, limit: int = None, **params
+    ) -> List[Ticket]:
         payload = {}
         headers = cls.prepare_headers(access_token)
         issues = []
@@ -104,20 +202,24 @@ class GitHub(TicketSystem):
                 data=payload,
                 params=params,
             )
-            if response.status_code == 403 and 'rate limit' in response.text:
+            if response.status_code == 403 and "rate limit" in response.text:
                 raise Exception("rate limit - you might want to use an access token")
             issue_records = json.loads(response.text)
             for record in issue_records:
                 tr = {
                     "project": project,
                     "title": record.get("title"),
-                    "body": record.get("body", ""),  
-                    "createdAt": parse(record.get("created_at"))
-                    if record.get("created_at")
-                    else "",
-                    "closedAt": parse(record.get("closed_at"))
-                    if record.get("closed_at")
-                    else "",
+                    "body": record.get("body", ""),
+                    "createdAt": (
+                        parse(record.get("created_at"))
+                        if record.get("created_at")
+                        else ""
+                    ),
+                    "closedAt": (
+                        parse(record.get("closed_at"))
+                        if record.get("closed_at")
+                        else ""
+                    ),
                     "state": record.get("state"),
                     "number": record.get("number"),
                     "url": f"{cls.projectUrl(project)}/issues/{record.get('number')}",
@@ -126,7 +228,7 @@ class GitHub(TicketSystem):
                 fetched_count += 1
                 # Check if we have reached the limit
                 if limit is not None and fetched_count >= limit:
-                    nextResults=False
+                    nextResults = False
                     break
 
             if len(issue_records) < 100:
@@ -134,9 +236,11 @@ class GitHub(TicketSystem):
             else:
                 params["page"] += 1
         return issues
-    
+
     @classmethod
-    def getComments(cls, project: OsProject, issue_number: int, access_token: str = None) -> List[dict]:
+    def getComments(
+        cls, project: OsProject, issue_number: int, access_token: str = None
+    ) -> List[dict]:
         """
         Fetch all comments for a specific issue number from GitHub.
         """
@@ -146,7 +250,9 @@ class GitHub(TicketSystem):
         if response.status_code == 200:
             return response.json()
         else:
-            raise Exception(f"Failed to fetch comments: {response.status_code} - {response.text}")
+            raise Exception(
+                f"Failed to fetch comments: {response.status_code} - {response.text}"
+            )
         return []
 
     @staticmethod
@@ -160,14 +266,13 @@ class GitHub(TicketSystem):
     @staticmethod
     def commitUrl(project: OsProject, id: str):
         return f"{GitHub.projectUrl(project)}/commit/{id}"
-    
+
     @staticmethod
     def commentUrl(project: OsProject, issue_number: int):
         """
         Construct the URL for accessing comments of a specific issue.
         """
         return f"https://api.github.com/repos/{project.owner}/{project.id}/issues/{issue_number}/comments"
-
 
     @staticmethod
     def resolveProjectUrl(url: str) -> (str, str):
@@ -201,29 +306,48 @@ class OsProject(object):
         self,
         owner: str = None,
         id: str = None,
-        ticketSystem: Type[TicketSystem] = GitHub,
+        ticketSystem: Type[TicketSystem] = None,
+        title: str = None,
+        url: str = None,
+        description: str = None,
+        language: str = None,
+        created_at: datetime.datetime = None,
+        updated_at: datetime.datetime = None,
+        stars: int = 0,
+        forks: int = 0,
     ):
         """
         Constructor
         """
         self.owner = owner
         self.id = id
-        self.ticketSystem = ticketSystem
+        self.ticketSystem = ticketSystem or GitHub
+        self.title = title
+        self.url = url
+        self.description = description
+        self.language = language
+        self.created_at = created_at
+        self.updated_at = updated_at
+        self.stars = stars
+        self.forks = forks
+
+    def __str__(self):
+        return f"{self.owner}/{self.id}"
 
     @staticmethod
     def getSamples():
         samples = [
             {
                 "id": "pyOpenSourceProjects",
-                "state": "",
                 "owner": "WolfgangFahl",
                 "title": "pyOpenSourceProjects",
                 "url": "https://github.com/WolfgangFahl/pyOpenSourceProjects",
-                "version": "",
-                "desciption": "Helper Library to organize open source Projects",
-                "date": datetime.datetime(year=2022, month=1, day=24),
-                "since": "",
-                "until": "",
+                "description": "Helper Library to organize open source Projects",
+                "language": "Python",
+                "created_at": datetime.datetime(year=2022, month=1, day=24),
+                "updated_at": datetime.datetime(year=2022, month=1, day=24),
+                "stars": 5,
+                "forks": 2,
             }
         ]
         return samples
@@ -235,8 +359,7 @@ class OsProject(object):
         """
         url = subprocess.check_output(["git", "config", "--get", "remote.origin.url"])
         url = url.decode().strip("\n")
-        osProject = cls.fromUrl(url)
-        return osProject
+        return cls.fromUrl(url)
 
     @classmethod
     def fromUrl(cls, url: str) -> OsProject:
@@ -244,9 +367,11 @@ class OsProject(object):
         Init OsProject from given url
         """
         if "github.com" in url:
-            owner, project = GitHub.resolveProjectUrl(url)
-            if owner and project:
-                return OsProject(owner=owner, id=project, ticketSystem=GitHub)
+            owner, project_id = GitHub.resolveProjectUrl(url)
+            if owner and project_id:
+                github = GitHub()
+                project = github.get_project(owner, project_id)
+                return project
         raise Exception(f"Could not resolve the url '{url}' to a OsProject object")
 
     def getIssues(self, **params) -> list:
@@ -254,14 +379,14 @@ class OsProject(object):
         tickets.sort(key=lambda r: getattr(r, "number"), reverse=True)
         return tickets
 
-    def getAllTickets(self, limit:int=None,**params):
+    def getAllTickets(self, limit: int = None, **params):
         """
         Get all Tickets of the project -  closed and open ones
-        
+
         Args:
             limit(int): if set limit the number of tickets retrieved
         """
-        issues= self.getIssues(state="all",limit=limit, **params)
+        issues = self.getIssues(state="all", limit=limit, **params)
         return issues
 
     def getCommits(self) -> List[Commit]:

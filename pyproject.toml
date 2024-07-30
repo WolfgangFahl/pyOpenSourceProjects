@@ -51,3 +51,4 @@ packages = [
 [project.scripts]
 issue2ticket = "osprojects.osproject:main"
 gitlog2wiki = "osprojects.osproject:gitlog2wiki"
+checkos = "osprojects.checkos:main"
