@@ -12,7 +12,9 @@ from typing import List
 # original at ngwidgets - use redundant local copy ...
 from osprojects.editor import Editor
 from osprojects.osproject import GitHub, OsProject
+import tomllib
 import traceback
+from packaging import version
 
 @dataclass
 class Check:
@@ -62,14 +64,20 @@ class CheckOS:
         failed_checks = [check for check in self.checks if not check.ok]
         return failed_checks
 
-    def add_check(self, content: str, needle: str, path: str, negative:bool=False) -> Check:
-        ok=needle in content
+    def add_check(self, ok, msg:str="",path: str=None,negative:bool=False) -> Check:
+        if not path:
+            raise ValueError("path parameter missing")
         marker=""
         if negative:
             ok=not ok
             marker="⚠ ️"
-        check = Check(ok=ok, path=path, msg=f"{marker}{needle} in {path}")
+        check = Check(ok=ok, path=path, msg=f"{marker}{msg}{path}")
         self.checks.append(check)
+        return check
+
+    def add_content_check(self, content: str, needle: str, path: str, negative:bool=False) -> Check:
+        ok=needle in content
+        check=self.add_check(ok, msg=f"{needle} in ", path=path,negative=negative)
         return check
 
     def add_path_check(self, path) -> Check:
@@ -96,46 +104,43 @@ class CheckOS:
                     content = file_exists.content
 
                     if file == "build.yml":
-                        self.add_check(
+                        min_version = int(self.requires_python.split('.')[-1])
+                        python_versions = f"""python-version: [ {', '.join([f"'3.{i}'" for i in range(min_version, 13)])} ]"""
+                        self.add_content_check(
                             content,
-                            """python-version: [ 3.9, '3.10', '3.11', '3.12' ]""",
+                            python_versions,
                             file_path,
                         )
-                        self.add_check(
+                        self.add_content_check(
                             content,
                             "os: [ubuntu-latest, macos-latest, windows-latest]",
                             file_path,
                         )
-                        self.add_check(content, "uses: actions/checkout@v4", file_path)
-                        self.add_check(
+                        self.add_content_check(content, "uses: actions/checkout@v4", file_path)
+                        self.add_content_check(
                             content,
                             "uses: actions/setup-python@v5",
                             file_path,
                         )
 
-                        self.add_check(
+                        self.add_content_check(
                             content,
                             "sphinx",
                             file_path,
                             negative=True
                         )
-
-                        for script in [
-                            "scripts/install",
-                            #"scripts/doc",
-                            "scripts/test",
-                        ]:
-                            self.add_check(content, script, file_path)
+                        scripts_ok="scripts/install" in content and "scripts/test" in content or "scripts/installAndTest" in content
+                        self.add_check(scripts_ok,"install and test", file_path)
 
                     elif file == "upload-to-pypi.yml":
-                        self.add_check(content, "id-token: write", file_path)
-                        self.add_check(content, "uses: actions/checkout@v4", file_path)
-                        self.add_check(
+                        self.add_content_check(content, "id-token: write", file_path)
+                        self.add_content_check(content, "uses: actions/checkout@v4", file_path)
+                        self.add_content_check(
                             content,
                             "uses: actions/setup-python@v5",
                             file_path,
                         )
-                        self.add_check(
+                        self.add_content_check(
                             content,
                             "uses: pypa/gh-action-pypi-publish@release/v1",
                             file_path,
@@ -145,13 +150,17 @@ class CheckOS:
         scripts_path = os.path.join(self.project_path, "scripts")
         scripts_exist = self.add_path_check(scripts_path)
         if scripts_exist.ok:
-            required_files = ["blackisort", "test", "install", "doc"]
+            required_files = ["blackisort", "test", "install", "doc", "release"]
             for file in required_files:
                 file_path = os.path.join(scripts_path, file)
                 file_exists = self.add_path_check(file_path)
                 if file_exists.ok:
                     content = file_exists.content
-                    # @TODO Check the actual content
+                    if file=="doc":
+                        self.add_content_check(content, "sphinx", file_path, negative=True)
+                        self.add_content_check(content,"WF 2024-07-30 - updated",file_path)
+                    if file=="release":
+                        self.add_content_check(content, "scripts/docs -d", file_path, negative=True)
 
     def check_readme(self):
         readme_path = os.path.join(self.project_path, "README.md")
@@ -159,9 +168,9 @@ class CheckOS:
         if readme_exists.ok:
             readme_content = readme_exists.content
             badge_lines = [
-                "[![pypi](https://img.shields.io/pypi/pyversions/{self.project.id})](https://pypi.org/project/{self.project.id}/)",
+                "[![pypi](https://img.shields.io/pypi/pyversions/{self.project_name})](https://pypi.org/project/{self.project_name}/)",
                 "[![Github Actions Build](https://github.com/{self.project.fqid}/actions/workflows/build.yml/badge.svg)](https://github.com/{self.project.fqid}/actions/workflows/build.yml)",
-                "[![PyPI Status](https://img.shields.io/pypi/v/{self.project.id}.svg)](https://pypi.python.org/pypi/{self.project.id}/)",
+                "[![PyPI Status](https://img.shields.io/pypi/v/{self.project_name}.svg)](https://pypi.python.org/pypi/{self.project_name}/)",
                 "[![GitHub issues](https://img.shields.io/github/issues/{self.project.fqid}.svg)](https://github.com/{self.project.fqid}/issues)",
                 "[![GitHub closed issues](https://img.shields.io/github/issues-closed/{self.project.fqid}.svg)](https://github.com/{self.project.fqid}/issues/?q=is%3Aissue+is%3Aclosed)",
                 "[![API Docs](https://img.shields.io/badge/API-Documentation-blue)](https://{self.project.owner}.github.io/{self.project.id}/)",
@@ -169,17 +178,38 @@ class CheckOS:
             ]
             for line in badge_lines:
                 formatted_line = line.format(self=self)
-                self.add_check(
+                self.add_content_check(
                     content=readme_content,
                     needle=formatted_line,
                     path=readme_path,
                 )
+            self.add_content_check(readme_content, "readthedocs", readme_path, negative=True)
+
+    def check_pyproject_toml(self):
+        toml_path = os.path.join(self.project_path, "pyproject.toml")
+        toml_exists = self.add_path_check(toml_path)
+        if toml_exists.ok:
+            content=toml_exists.content
+            toml_dict = tomllib.loads(content)
+            project_check=self.add_check("project" in toml_dict, "[project]", toml_path)
+            if project_check.ok:
+                self.project_name=toml_dict["project"]["name"]
+                requires_python_check=self.add_check("requires-python" in toml_dict["project"], "requires-python", toml_path)
+                if requires_python_check.ok:
+                    self.requires_python = toml_dict["project"]["requires-python"]
+                    self.min_python_version = version.parse(self.requires_python.replace(">=", ""))
+                    min_version_needed="3.9"
+                    version_ok=self.min_python_version >= version.parse(min_version_needed)
+                    self.add_check(version_ok, f"requires-python>={min_version_needed}", toml_path)
+            self.add_content_check(content, "hatchling", toml_path)
+            self.add_content_check(content,"[tool.hatch.build.targets.wheel.sources]",toml_path)
 
     def check(self):
         """
         Check the given project and print results
         """
         self.check_local()
+        self.check_pyproject_toml()
         self.check_readme()
         self.check_scripts()
         self.check_github_workflows()
@@ -213,7 +243,8 @@ class CheckOS:
 
                     if self.args.editor and path_failed > 0:
                         if os.path.isfile(path):
-                            Editor.open(path)
+                            # @TODO Make editor configurable
+                            Editor.open(path,default_editor_cmd="/usr/local/bin/atom")
                         else:
                             Editor.open_filepath(path)
 
