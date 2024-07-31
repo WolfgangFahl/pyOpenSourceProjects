@@ -1136,9 +1136,7 @@
 
               <details class="quote">
                 <summary>Source code in <code>osprojects/checkos.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 38</span>
-<span class="normal"> 39</span>
-<span class="normal"> 40</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 40</span>
 <span class="normal"> 41</span>
 <span class="normal"> 42</span>
 <span class="normal"> 43</span>
@@ -1316,7 +1314,38 @@
 <span class="normal">215</span>
 <span class="normal">216</span>
 <span class="normal">217</span>
-<span class="normal">218</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">CheckOS</span><span class="p">:</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">CheckOS</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    check the open source projects</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -1343,14 +1372,20 @@
         <span class="n">failed_checks</span> <span class="o">=</span> <span class="p">[</span><span class="n">check</span> <span class="k">for</span> <span class="n">check</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">checks</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">check</span><span class="o">.</span><span class="n">ok</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">failed_checks</span>
 
-    <span class="k">def</span> <span class="nf">add_check</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">needle</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">negative</span><span class="p">:</span><span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Check</span><span class="p">:</span>
-        <span class="n">ok</span><span class="o">=</span><span class="n">needle</span> <span class="ow">in</span> <span class="n">content</span>
+    <span class="k">def</span> <span class="nf">add_check</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ok</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span><span class="nb">str</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span><span class="n">negative</span><span class="p">:</span><span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Check</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;path parameter missing&quot;</span><span class="p">)</span>
         <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
         <span class="k">if</span> <span class="n">negative</span><span class="p">:</span>
             <span class="n">ok</span><span class="o">=</span><span class="ow">not</span> <span class="n">ok</span>
             <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;⚠ ️&quot;</span>
-        <span class="n">check</span> <span class="o">=</span> <span class="n">Check</span><span class="p">(</span><span class="n">ok</span><span class="o">=</span><span class="n">ok</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">marker</span><span class="si">}{</span><span class="n">needle</span><span class="si">}</span><span class="s2"> in </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">check</span> <span class="o">=</span> <span class="n">Check</span><span class="p">(</span><span class="n">ok</span><span class="o">=</span><span class="n">ok</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">marker</span><span class="si">}{</span><span class="n">msg</span><span class="si">}{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">checks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">check</span>
+
+    <span class="k">def</span> <span class="nf">add_content_check</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">needle</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">negative</span><span class="p">:</span><span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Check</span><span class="p">:</span>
+        <span class="n">ok</span><span class="o">=</span><span class="n">needle</span> <span class="ow">in</span> <span class="n">content</span>
+        <span class="n">check</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span><span class="n">ok</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">needle</span><span class="si">}</span><span class="s2"> in &quot;</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span><span class="n">negative</span><span class="o">=</span><span class="n">negative</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">check</span>
 
     <span class="k">def</span> <span class="nf">add_path_check</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Check</span><span class="p">:</span>
@@ -1377,46 +1412,43 @@
                     <span class="n">content</span> <span class="o">=</span> <span class="n">file_exists</span><span class="o">.</span><span class="n">content</span>
 
                     <span class="k">if</span> <span class="n">file</span> <span class="o">==</span> <span class="s2">&quot;build.yml&quot;</span><span class="p">:</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span>
+                        <span class="n">min_version</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">requires_python</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                        <span class="n">python_versions</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;python-version: [ </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;&#39;3.</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="nb">range</span><span class="p">(</span><span class="n">min_version</span><span class="p">,</span><span class="w"> </span><span class="mi">13</span><span class="p">)])</span><span class="si">}</span><span class="s2"> ]&quot;&quot;&quot;</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span>
                             <span class="n">content</span><span class="p">,</span>
-<span class="w">                            </span><span class="sd">&quot;&quot;&quot;python-version: [ 3.9, &#39;3.10&#39;, &#39;3.11&#39;, &#39;3.12&#39; ]&quot;&quot;&quot;</span><span class="p">,</span>
+                            <span class="n">python_versions</span><span class="p">,</span>
                             <span class="n">file_path</span><span class="p">,</span>
                         <span class="p">)</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span>
                             <span class="n">content</span><span class="p">,</span>
                             <span class="s2">&quot;os: [ubuntu-latest, macos-latest, windows-latest]&quot;</span><span class="p">,</span>
                             <span class="n">file_path</span><span class="p">,</span>
                         <span class="p">)</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="s2">&quot;uses: actions/checkout@v4&quot;</span><span class="p">,</span> <span class="n">file_path</span><span class="p">)</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="s2">&quot;uses: actions/checkout@v4&quot;</span><span class="p">,</span> <span class="n">file_path</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span>
                             <span class="n">content</span><span class="p">,</span>
                             <span class="s2">&quot;uses: actions/setup-python@v5&quot;</span><span class="p">,</span>
                             <span class="n">file_path</span><span class="p">,</span>
                         <span class="p">)</span>
 
-                        <span class="bp">self</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span>
                             <span class="n">content</span><span class="p">,</span>
                             <span class="s2">&quot;sphinx&quot;</span><span class="p">,</span>
                             <span class="n">file_path</span><span class="p">,</span>
                             <span class="n">negative</span><span class="o">=</span><span class="kc">True</span>
                         <span class="p">)</span>
-
-                        <span class="k">for</span> <span class="n">script</span> <span class="ow">in</span> <span class="p">[</span>
-                            <span class="s2">&quot;scripts/install&quot;</span><span class="p">,</span>
-                            <span class="c1">#&quot;scripts/doc&quot;,</span>
-                            <span class="s2">&quot;scripts/test&quot;</span><span class="p">,</span>
-                        <span class="p">]:</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">script</span><span class="p">,</span> <span class="n">file_path</span><span class="p">)</span>
+                        <span class="n">scripts_ok</span><span class="o">=</span><span class="s2">&quot;scripts/install&quot;</span> <span class="ow">in</span> <span class="n">content</span> <span class="ow">and</span> <span class="s2">&quot;scripts/test&quot;</span> <span class="ow">in</span> <span class="n">content</span> <span class="ow">or</span> <span class="s2">&quot;scripts/installAndTest&quot;</span> <span class="ow">in</span> <span class="n">content</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span><span class="n">scripts_ok</span><span class="p">,</span><span class="s2">&quot;install and test&quot;</span><span class="p">,</span> <span class="n">file_path</span><span class="p">)</span>
 
                     <span class="k">elif</span> <span class="n">file</span> <span class="o">==</span> <span class="s2">&quot;upload-to-pypi.yml&quot;</span><span class="p">:</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="s2">&quot;id-token: write&quot;</span><span class="p">,</span> <span class="n">file_path</span><span class="p">)</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="s2">&quot;uses: actions/checkout@v4&quot;</span><span class="p">,</span> <span class="n">file_path</span><span class="p">)</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="s2">&quot;id-token: write&quot;</span><span class="p">,</span> <span class="n">file_path</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="s2">&quot;uses: actions/checkout@v4&quot;</span><span class="p">,</span> <span class="n">file_path</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span>
                             <span class="n">content</span><span class="p">,</span>
                             <span class="s2">&quot;uses: actions/setup-python@v5&quot;</span><span class="p">,</span>
                             <span class="n">file_path</span><span class="p">,</span>
                         <span class="p">)</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span>
                             <span class="n">content</span><span class="p">,</span>
                             <span class="s2">&quot;uses: pypa/gh-action-pypi-publish@release/v1&quot;</span><span class="p">,</span>
                             <span class="n">file_path</span><span class="p">,</span>
@@ -1426,13 +1458,17 @@
         <span class="n">scripts_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">project_path</span><span class="p">,</span> <span class="s2">&quot;scripts&quot;</span><span class="p">)</span>
         <span class="n">scripts_exist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_path_check</span><span class="p">(</span><span class="n">scripts_path</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">scripts_exist</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span>
-            <span class="n">required_files</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;blackisort&quot;</span><span class="p">,</span> <span class="s2">&quot;test&quot;</span><span class="p">,</span> <span class="s2">&quot;install&quot;</span><span class="p">,</span> <span class="s2">&quot;doc&quot;</span><span class="p">]</span>
+            <span class="n">required_files</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;blackisort&quot;</span><span class="p">,</span> <span class="s2">&quot;test&quot;</span><span class="p">,</span> <span class="s2">&quot;install&quot;</span><span class="p">,</span> <span class="s2">&quot;doc&quot;</span><span class="p">,</span> <span class="s2">&quot;release&quot;</span><span class="p">]</span>
             <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">required_files</span><span class="p">:</span>
                 <span class="n">file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">scripts_path</span><span class="p">,</span> <span class="n">file</span><span class="p">)</span>
                 <span class="n">file_exists</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_path_check</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">file_exists</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span>
                     <span class="n">content</span> <span class="o">=</span> <span class="n">file_exists</span><span class="o">.</span><span class="n">content</span>
-                    <span class="c1"># @TODO Check the actual content</span>
+                    <span class="k">if</span> <span class="n">file</span><span class="o">==</span><span class="s2">&quot;doc&quot;</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="s2">&quot;sphinx&quot;</span><span class="p">,</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">negative</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span><span class="n">content</span><span class="p">,</span><span class="s2">&quot;WF 2024-07-30 - updated&quot;</span><span class="p">,</span><span class="n">file_path</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">file</span><span class="o">==</span><span class="s2">&quot;release&quot;</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="s2">&quot;scripts/docs -d&quot;</span><span class="p">,</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">negative</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">check_readme</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">readme_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">project_path</span><span class="p">,</span> <span class="s2">&quot;README.md&quot;</span><span class="p">)</span>
@@ -1440,9 +1476,9 @@
         <span class="k">if</span> <span class="n">readme_exists</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span>
             <span class="n">readme_content</span> <span class="o">=</span> <span class="n">readme_exists</span><span class="o">.</span><span class="n">content</span>
             <span class="n">badge_lines</span> <span class="o">=</span> <span class="p">[</span>
-                <span class="s2">&quot;[![pypi](https://img.shields.io/pypi/pyversions/</span><span class="si">{self.project.id}</span><span class="s2">)](https://pypi.org/project/</span><span class="si">{self.project.id}</span><span class="s2">/)&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;[![pypi](https://img.shields.io/pypi/pyversions/</span><span class="si">{self.project_name}</span><span class="s2">)](https://pypi.org/project/</span><span class="si">{self.project_name}</span><span class="s2">/)&quot;</span><span class="p">,</span>
                 <span class="s2">&quot;[![Github Actions Build](https://github.com/</span><span class="si">{self.project.fqid}</span><span class="s2">/actions/workflows/build.yml/badge.svg)](https://github.com/</span><span class="si">{self.project.fqid}</span><span class="s2">/actions/workflows/build.yml)&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;[![PyPI Status](https://img.shields.io/pypi/v/</span><span class="si">{self.project.id}</span><span class="s2">.svg)](https://pypi.python.org/pypi/</span><span class="si">{self.project.id}</span><span class="s2">/)&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;[![PyPI Status](https://img.shields.io/pypi/v/</span><span class="si">{self.project_name}</span><span class="s2">.svg)](https://pypi.python.org/pypi/</span><span class="si">{self.project_name}</span><span class="s2">/)&quot;</span><span class="p">,</span>
                 <span class="s2">&quot;[![GitHub issues](https://img.shields.io/github/issues/</span><span class="si">{self.project.fqid}</span><span class="s2">.svg)](https://github.com/</span><span class="si">{self.project.fqid}</span><span class="s2">/issues)&quot;</span><span class="p">,</span>
                 <span class="s2">&quot;[![GitHub closed issues](https://img.shields.io/github/issues-closed/</span><span class="si">{self.project.fqid}</span><span class="s2">.svg)](https://github.com/</span><span class="si">{self.project.fqid}</span><span class="s2">/issues/?q=is%3Aissue+is%3Aclosed)&quot;</span><span class="p">,</span>
                 <span class="s2">&quot;[![API Docs](https://img.shields.io/badge/API-Documentation-blue)](https://</span><span class="si">{self.project.owner}</span><span class="s2">.github.io/</span><span class="si">{self.project.id}</span><span class="s2">/)&quot;</span><span class="p">,</span>
@@ -1450,17 +1486,38 @@
             <span class="p">]</span>
             <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">badge_lines</span><span class="p">:</span>
                 <span class="n">formatted_line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span>
                     <span class="n">content</span><span class="o">=</span><span class="n">readme_content</span><span class="p">,</span>
                     <span class="n">needle</span><span class="o">=</span><span class="n">formatted_line</span><span class="p">,</span>
                     <span class="n">path</span><span class="o">=</span><span class="n">readme_path</span><span class="p">,</span>
                 <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span><span class="n">readme_content</span><span class="p">,</span> <span class="s2">&quot;readthedocs&quot;</span><span class="p">,</span> <span class="n">readme_path</span><span class="p">,</span> <span class="n">negative</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">check_pyproject_toml</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">toml_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">project_path</span><span class="p">,</span> <span class="s2">&quot;pyproject.toml&quot;</span><span class="p">)</span>
+        <span class="n">toml_exists</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_path_check</span><span class="p">(</span><span class="n">toml_path</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">toml_exists</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span>
+            <span class="n">content</span><span class="o">=</span><span class="n">toml_exists</span><span class="o">.</span><span class="n">content</span>
+            <span class="n">toml_dict</span> <span class="o">=</span> <span class="n">tomllib</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+            <span class="n">project_check</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span><span class="s2">&quot;project&quot;</span> <span class="ow">in</span> <span class="n">toml_dict</span><span class="p">,</span> <span class="s2">&quot;[project]&quot;</span><span class="p">,</span> <span class="n">toml_path</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">project_check</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">project_name</span><span class="o">=</span><span class="n">toml_dict</span><span class="p">[</span><span class="s2">&quot;project&quot;</span><span class="p">][</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+                <span class="n">requires_python_check</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span><span class="s2">&quot;requires-python&quot;</span> <span class="ow">in</span> <span class="n">toml_dict</span><span class="p">[</span><span class="s2">&quot;project&quot;</span><span class="p">],</span> <span class="s2">&quot;requires-python&quot;</span><span class="p">,</span> <span class="n">toml_path</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">requires_python_check</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">requires_python</span> <span class="o">=</span> <span class="n">toml_dict</span><span class="p">[</span><span class="s2">&quot;project&quot;</span><span class="p">][</span><span class="s2">&quot;requires-python&quot;</span><span class="p">]</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">min_python_version</span> <span class="o">=</span> <span class="n">version</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">requires_python</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;&gt;=&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+                    <span class="n">min_version_needed</span><span class="o">=</span><span class="s2">&quot;3.9&quot;</span>
+                    <span class="n">version_ok</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_python_version</span> <span class="o">&gt;=</span> <span class="n">version</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">min_version_needed</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span><span class="n">version_ok</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;requires-python&gt;=</span><span class="si">{</span><span class="n">min_version_needed</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">toml_path</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="s2">&quot;hatchling&quot;</span><span class="p">,</span> <span class="n">toml_path</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span><span class="n">content</span><span class="p">,</span><span class="s2">&quot;[tool.hatch.build.targets.wheel.sources]&quot;</span><span class="p">,</span><span class="n">toml_path</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">check</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Check the given project and print results</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">check_local</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_pyproject_toml</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">check_readme</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">check_scripts</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">check_github_workflows</span><span class="p">()</span>
@@ -1494,7 +1551,8 @@
 
                     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">editor</span> <span class="ow">and</span> <span class="n">path_failed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                         <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
-                            <span class="n">Editor</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+                            <span class="c1"># @TODO Make editor configurable</span>
+                            <span class="n">Editor</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="n">default_editor_cmd</span><span class="o">=</span><span class="s2">&quot;/usr/local/bin/atom&quot;</span><span class="p">)</span>
                         <span class="k">else</span><span class="p">:</span>
                             <span class="n">Editor</span><span class="o">.</span><span class="n">open_filepath</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -1527,36 +1585,7 @@
 
             <details class="quote">
               <summary>Source code in <code>osprojects/checkos.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">178</span>
-<span class="normal">179</span>
-<span class="normal">180</span>
-<span class="normal">181</span>
-<span class="normal">182</span>
-<span class="normal">183</span>
-<span class="normal">184</span>
-<span class="normal">185</span>
-<span class="normal">186</span>
-<span class="normal">187</span>
-<span class="normal">188</span>
-<span class="normal">189</span>
-<span class="normal">190</span>
-<span class="normal">191</span>
-<span class="normal">192</span>
-<span class="normal">193</span>
-<span class="normal">194</span>
-<span class="normal">195</span>
-<span class="normal">196</span>
-<span class="normal">197</span>
-<span class="normal">198</span>
-<span class="normal">199</span>
-<span class="normal">200</span>
-<span class="normal">201</span>
-<span class="normal">202</span>
-<span class="normal">203</span>
-<span class="normal">204</span>
-<span class="normal">205</span>
-<span class="normal">206</span>
-<span class="normal">207</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">207</span>
 <span class="normal">208</span>
 <span class="normal">209</span>
 <span class="normal">210</span>
@@ -1567,11 +1596,43 @@
 <span class="normal">215</span>
 <span class="normal">216</span>
 <span class="normal">217</span>
-<span class="normal">218</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">check</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">check</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Check the given project and print results</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">check_local</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">check_pyproject_toml</span><span class="p">()</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">check_readme</span><span class="p">()</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">check_scripts</span><span class="p">()</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">check_github_workflows</span><span class="p">()</span>
@@ -1605,7 +1666,8 @@
 
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">editor</span> <span class="ow">and</span> <span class="n">path_failed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                     <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
-                        <span class="n">Editor</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+                        <span class="c1"># @TODO Make editor configurable</span>
+                        <span class="n">Editor</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="n">default_editor_cmd</span><span class="o">=</span><span class="s2">&quot;/usr/local/bin/atom&quot;</span><span class="p">)</span>
                     <span class="k">else</span><span class="p">:</span>
                         <span class="n">Editor</span><span class="o">.</span><span class="n">open_filepath</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -1638,38 +1700,7 @@
 
             <details class="quote">
               <summary>Source code in <code>osprojects/checkos.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">221</span>
-<span class="normal">222</span>
-<span class="normal">223</span>
-<span class="normal">224</span>
-<span class="normal">225</span>
-<span class="normal">226</span>
-<span class="normal">227</span>
-<span class="normal">228</span>
-<span class="normal">229</span>
-<span class="normal">230</span>
-<span class="normal">231</span>
-<span class="normal">232</span>
-<span class="normal">233</span>
-<span class="normal">234</span>
-<span class="normal">235</span>
-<span class="normal">236</span>
-<span class="normal">237</span>
-<span class="normal">238</span>
-<span class="normal">239</span>
-<span class="normal">240</span>
-<span class="normal">241</span>
-<span class="normal">242</span>
-<span class="normal">243</span>
-<span class="normal">244</span>
-<span class="normal">245</span>
-<span class="normal">246</span>
-<span class="normal">247</span>
-<span class="normal">248</span>
-<span class="normal">249</span>
-<span class="normal">250</span>
-<span class="normal">251</span>
-<span class="normal">252</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">252</span>
 <span class="normal">253</span>
 <span class="normal">254</span>
 <span class="normal">255</span>
@@ -1703,7 +1734,38 @@
 <span class="normal">283</span>
 <span class="normal">284</span>
 <span class="normal">285</span>
-<span class="normal">286</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">_argv</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span>
+<span class="normal">315</span>
+<span class="normal">316</span>
+<span class="normal">317</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">_argv</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    main command line entry point</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -1943,8 +2005,7 @@
 <span class="normal">129</span>
 <span class="normal">130</span>
 <span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Editor</span><span class="p">:</span>
+<span class="normal">132</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Editor</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    helper class to open the system defined editor</span>
 
@@ -2023,14 +2084,13 @@
         <span class="n">editor_env</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;EDITOR&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">editor_env</span><span class="p">:</span>
             <span class="n">editor_cmd</span> <span class="o">=</span> <span class="n">editor_env</span>
-        <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;darwin&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;Darwin&quot;</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">editor_env</span><span class="p">:</span>
                 <span class="c1"># https://stackoverflow.com/questions/22390709/how-can-i-open-the-atom-editor-from-the-command-line-in-os-x</span>
                 <span class="n">editor_cmd</span> <span class="o">=</span> <span class="n">default_editor_cmd</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">editor_cmd</span><span class="p">:</span>
-            <span class="n">editor_cmd</span> <span class="o">=</span> <span class="s2">&quot;open&quot;</span>
-        <span class="n">os_cmd</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">editor_cmd</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">file_source</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="n">os_cmd</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">editor_cmd</span><span class="p">:</span>
+            <span class="n">os_cmd</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">editor_cmd</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">file_source</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="n">os_cmd</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">file_source</span>
 
     <span class="nd">@classmethod</span>
@@ -2330,8 +2390,7 @@
 <span class="normal">100</span>
 <span class="normal">101</span>
 <span class="normal">102</span>
-<span class="normal">103</span>
-<span class="normal">104</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+<span class="normal">103</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span> <span class="nf">open</span><span class="p">(</span>
     <span class="bp">cls</span><span class="p">,</span>
     <span class="n">file_source</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -2366,14 +2425,13 @@
     <span class="n">editor_env</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;EDITOR&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">editor_env</span><span class="p">:</span>
         <span class="n">editor_cmd</span> <span class="o">=</span> <span class="n">editor_env</span>
-    <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;darwin&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;Darwin&quot;</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">editor_env</span><span class="p">:</span>
             <span class="c1"># https://stackoverflow.com/questions/22390709/how-can-i-open-the-atom-editor-from-the-command-line-in-os-x</span>
             <span class="n">editor_cmd</span> <span class="o">=</span> <span class="n">default_editor_cmd</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">editor_cmd</span><span class="p">:</span>
-        <span class="n">editor_cmd</span> <span class="o">=</span> <span class="s2">&quot;open&quot;</span>
-    <span class="n">os_cmd</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">editor_cmd</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">file_source</span><span class="si">}</span><span class="s2">&quot;</span>
-    <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="n">os_cmd</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">editor_cmd</span><span class="p">:</span>
+        <span class="n">os_cmd</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">editor_cmd</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">file_source</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="n">os_cmd</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">file_source</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -2464,7 +2522,8 @@
 
             <details class="quote">
               <summary>Source code in <code>osprojects/editor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">106</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">105</span>
+<span class="normal">106</span>
 <span class="normal">107</span>
 <span class="normal">108</span>
 <span class="normal">109</span>
@@ -2490,8 +2549,7 @@
 <span class="normal">129</span>
 <span class="normal">130</span>
 <span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+<span class="normal">132</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span> <span class="nf">open_tmp_text</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">file_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    open an editor for the given text in a newly created temporary file</span>
