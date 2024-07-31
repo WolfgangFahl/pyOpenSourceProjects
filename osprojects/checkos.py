@@ -4,90 +4,237 @@ Created on 2024-07-30
 
 @author: wf
 """
-from dataclasses import dataclass
 import argparse
-from argparse import Namespace
 import os
+from argparse import Namespace
+from dataclasses import dataclass
 from typing import List
-
+# original at ngwidgets - use redundant local copy ...
+from osprojects.editor import Editor
 from osprojects.osproject import GitHub, OsProject
+import traceback
 
 @dataclass
 class Check:
-    ok: bool=False
-    msg: str=""
+    ok: bool = False
+    path: str = None
+    msg: str = ""
+    content: str = None
 
     @property
     def marker(self) -> str:
         return f"✅" if self.ok else f"❌"
+
+    @classmethod
+    def file_exists(cls, path) -> "Check":
+        ok = os.path.exists(path)
+        content = None
+        if ok and os.path.isfile(path):
+            with open(path, "r") as f:
+                content = f.read()
+        check = Check(ok, path, msg=path, content=content)
+        return check
 
 class CheckOS:
     """
     check the open source projects
     """
 
-    def __init__(self, args:Namespace,project:OsProject):
-        self.args=args
-        self.verbose= args.verbose
+    def __init__(self, args: Namespace, project: OsProject):
+        self.args = args
+        self.verbose = args.verbose
         self.workspace = args.workspace
-        self.project=project
+        self.project = project
         self.project_path = os.path.join(self.workspace, project.id)
+        self.checks = []
 
+    @property
+    def total(self) -> int:
+        return len(self.checks)
 
-    def check_local(self)->Check:
-        local=Check(ok=os.path.exists(self.project_path),msg=f"{self.project_path}")
+    @property
+    def ok_checks(self) -> List[Check]:
+        ok_checks = [check for check in self.checks if check.ok]
+        return ok_checks
+
+    @property
+    def failed_checks(self) -> List[Check]:
+        failed_checks = [check for check in self.checks if not check.ok]
+        return failed_checks
+
+    def add_check(self, content: str, needle: str, path: str, negative:bool=False) -> Check:
+        ok=needle in content
+        marker=""
+        if negative:
+            ok=not ok
+            marker="⚠ ️"
+        check = Check(ok=ok, path=path, msg=f"{marker}{needle} in {path}")
+        self.checks.append(check)
+        return check
+
+    def add_path_check(self, path) -> Check:
+        # Check if path exists
+        path_exists = Check.file_exists(path)
+        self.checks.append(path_exists)
+        return path_exists
+
+    def check_local(self) -> Check:
+        local = Check.file_exists(self.project_path)
         return local
 
-    def check_readme(self) -> List[Check]:
-        checks=[]
+    def check_github_workflows(self):
+        workflows_path = os.path.join(self.project_path, ".github", "workflows")
+        workflows_exist = self.add_path_check(workflows_path)
+
+        if workflows_exist.ok:
+            required_files = ["build.yml", "upload-to-pypi.yml"]
+            for file in required_files:
+                file_path = os.path.join(workflows_path, file)
+                file_exists = self.add_path_check(file_path)
+
+                if file_exists.ok:
+                    content = file_exists.content
+
+                    if file == "build.yml":
+                        self.add_check(
+                            content,
+                            """python-version: [ 3.9, '3.10', '3.11', '3.12' ]""",
+                            file_path,
+                        )
+                        self.add_check(
+                            content,
+                            "os: [ubuntu-latest, macos-latest, windows-latest]",
+                            file_path,
+                        )
+                        self.add_check(content, "uses: actions/checkout@v4", file_path)
+                        self.add_check(
+                            content,
+                            "uses: actions/setup-python@v5",
+                            file_path,
+                        )
+
+                        self.add_check(
+                            content,
+                            "sphinx",
+                            file_path,
+                            negative=True
+                        )
+
+                        for script in [
+                            "scripts/install",
+                            #"scripts/doc",
+                            "scripts/test",
+                        ]:
+                            self.add_check(content, script, file_path)
+
+                    elif file == "upload-to-pypi.yml":
+                        self.add_check(content, "id-token: write", file_path)
+                        self.add_check(content, "uses: actions/checkout@v4", file_path)
+                        self.add_check(
+                            content,
+                            "uses: actions/setup-python@v5",
+                            file_path,
+                        )
+                        self.add_check(
+                            content,
+                            "uses: pypa/gh-action-pypi-publish@release/v1",
+                            file_path,
+                        )
+
+    def check_scripts(self):
+        scripts_path = os.path.join(self.project_path, "scripts")
+        scripts_exist = self.add_path_check(scripts_path)
+        if scripts_exist.ok:
+            required_files = ["blackisort", "test", "install", "doc"]
+            for file in required_files:
+                file_path = os.path.join(scripts_path, file)
+                file_exists = self.add_path_check(file_path)
+                if file_exists.ok:
+                    content = file_exists.content
+                    # @TODO Check the actual content
+
+    def check_readme(self):
         readme_path = os.path.join(self.project_path, "README.md")
-        readme_exists=Check(ok=os.path.exists(readme_path),msg=readme_path)
-        checks.append(readme_exists)
+        readme_exists = self.add_path_check(readme_path)
         if readme_exists.ok:
-            with open(readme_path, "r") as readme_file:
-                readme_content = readme_file.read()
-                badge_lines = [
+            readme_content = readme_exists.content
+            badge_lines = [
                 "[![pypi](https://img.shields.io/pypi/pyversions/{self.project.id})](https://pypi.org/project/{self.project.id}/)",
                 "[![Github Actions Build](https://github.com/{self.project.fqid}/actions/workflows/build.yml/badge.svg)](https://github.com/{self.project.fqid}/actions/workflows/build.yml)",
                 "[![PyPI Status](https://img.shields.io/pypi/v/{self.project.id}.svg)](https://pypi.python.org/pypi/{self.project.id}/)",
                 "[![GitHub issues](https://img.shields.io/github/issues/{self.project.fqid}.svg)](https://github.com/{self.project.fqid}/issues)",
                 "[![GitHub closed issues](https://img.shields.io/github/issues-closed/{self.project.fqid}.svg)](https://github.com/{self.project.fqid}/issues/?q=is%3Aissue+is%3Aclosed)",
                 "[![API Docs](https://img.shields.io/badge/API-Documentation-blue)](https://{self.project.owner}.github.io/{self.project.id}/)",
-                "[![License](https://img.shields.io/github/license/{self.project.fqid}.svg)](https://www.apache.org/licenses/LICENSE-2.0)"
+                "[![License](https://img.shields.io/github/license/{self.project.fqid}.svg)](https://www.apache.org/licenses/LICENSE-2.0)",
             ]
             for line in badge_lines:
                 formatted_line = line.format(self=self)
-                checks.append(Check(ok=formatted_line in readme_content, msg=formatted_line))
+                self.add_check(
+                    content=readme_content,
+                    needle=formatted_line,
+                    path=readme_path,
+                )
 
-
-        return checks
-
-    def check(self) -> List[Check]:
+    def check(self):
         """
         Check the given project and print results
         """
-        checks = []
-        checks.append(self.check_local())
-        checks.extend(self.check_readme())
-        total=len(checks)
-        ok_checks = [check for check in checks if check.ok]
-        failed_checks = [check for check in checks if not check.ok]
-        #ok_count=len(ok_checks)
-        failed_count=len(failed_checks)
-        summary=f"❌ {failed_count}/{total}" if failed_count>0 else "✅"
-        print(f"{self.project} {summary}: {self.project.url}")
-        if failed_count>0:
-            sorted_checks = ok_checks + failed_checks if self.verbose else failed_checks
+        self.check_local()
+        self.check_readme()
+        self.check_scripts()
+        self.check_github_workflows()
 
-            for i,check in enumerate(sorted_checks):
-                print(f"    {i+1:3}{check.marker}:{check.msg}")
-            return checks
+        # ok_count=len(ok_checks)
+        failed_count = len(self.failed_checks)
+        summary = f"❌ {failed_count}/{self.total}" if failed_count > 0 else f"✅ {self.total}/{self.total}"
+        print(f"{self.project} {summary}: {self.project.url}")
+        if failed_count > 0:
+            # Sort checks by path
+            sorted_checks = sorted(self.checks, key=lambda c: c.path or "")
+
+            # Group checks by path
+            checks_by_path = {}
+            for check in sorted_checks:
+                if check.path not in checks_by_path:
+                    checks_by_path[check.path] = []
+                checks_by_path[check.path].append(check)
+
+            # Display results
+            for path, path_checks in checks_by_path.items():
+                path_failed = sum(1 for c in path_checks if not c.ok)
+                if path_failed > 0 or self.args.debug:
+                    print(f"❌ {path}: {path_failed}")
+                    i=0
+                    for check in path_checks:
+                        show=not check.ok or self.args.debug
+                        if show:
+                            i+=1
+                            print(f"    {i:3}{check.marker}:{check.msg}")
+
+                    if self.args.editor and path_failed > 0:
+                        if os.path.isfile(path):
+                            Editor.open(path)
+                        else:
+                            Editor.open_filepath(path)
+
 
 def main(_argv=None):
     """
     main command line entry point
     """
     parser = argparse.ArgumentParser(description="Check open source projects")
+    parser.add_argument(
+        "-d",
+        "--debug",
+        action="store_true",
+        help="add debug output",
+    )
+    parser.add_argument(
+        "-e",
+        "--editor",
+        action="store_true",
+        help="open default editor on failed files",
+    )
     parser.add_argument(
         "-o", "--owner", help="project owner or organization", required=True
     )
@@ -97,7 +244,7 @@ def main(_argv=None):
         "--local", action="store_true", help="check only locally available projects"
     )
     parser.add_argument(
-        "-v","--verbose", action="store_true", help="show verbose output"
+        "-v", "--verbose", action="store_true", help="show verbose output"
     )
     parser.add_argument(
         "-ws",
@@ -108,31 +255,35 @@ def main(_argv=None):
 
     args = parser.parse_args(args=_argv)
 
-    github = GitHub()
-    if args.project:
-        # Check specific project
-        projects = [
-            github.list_projects_as_os_projects(args.owner, project_name=args.project)
-        ]
-    else:
-        # Check all projects
-        projects = github.list_projects_as_os_projects(args.owner)
+    try:
+        github = GitHub()
+        if args.project:
+            # Check specific project
+            projects = github.list_projects_as_os_projects(
+                args.owner, project_name=args.project
+            )
+        else:
+            # Check all projects
+            projects = github.list_projects_as_os_projects(args.owner)
 
-    if args.language:
-        projects = [p for p in projects if p.language == args.language]
+        if args.language:
+            projects = [p for p in projects if p.language == args.language]
 
-    if args.local:
-        local_projects = []
+        if args.local:
+            local_projects = []
+            for project in projects:
+                checker = CheckOS(args=args, project=project)
+                if checker.check_local().ok:
+                    local_projects.append(project)
+            projects = local_projects
+
         for project in projects:
-            checker = CheckOS(args=args,project=project)
-            if checker.check_local().ok:
-                local_projects.append(project)
-        projects=local_projects
-
-
-    for project in projects:
-        checker = CheckOS(args=args,project=project)
-        checker.check()
+            checker = CheckOS(args=args, project=project)
+            checker.check()
+    except Exception as ex:
+        if args.debug:
+            print(traceback.format_exc())
+        raise ex
 
 if __name__ == "__main__":
     main()

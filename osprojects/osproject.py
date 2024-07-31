@@ -333,7 +333,7 @@ class OsProject(object):
 
     @property
     def fqid(self):
-        fqid=f"{self.owner}/{self.id}"
+        fqid = f"{self.owner}/{self.id}"
         return fqid
 
     def __str__(self):
