@@ -160,7 +160,7 @@ class CheckOS:
                         self.add_content_check(content, "sphinx", file_path, negative=True)
                         self.add_content_check(content,"WF 2024-07-30 - updated",file_path)
                     if file=="release":
-                        self.add_content_check(content, "scripts/docs -d", file_path, negative=True)
+                        self.add_content_check(content, "scripts/doc -d", file_path)
 
     def check_readme(self):
         readme_path = os.path.join(self.project_path, "README.md")
