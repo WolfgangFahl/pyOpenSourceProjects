@@ -204,7 +204,7 @@ class CheckOS:
             self.add_content_check(content, "hatchling", toml_path)
             self.add_content_check(content,"[tool.hatch.build.targets.wheel.sources]",toml_path)
 
-    def check(self):
+    def check(self,title:str):
         """
         Check the given project and print results
         """
@@ -216,8 +216,8 @@ class CheckOS:
 
         # ok_count=len(ok_checks)
         failed_count = len(self.failed_checks)
-        summary = f"❌ {failed_count}/{self.total}" if failed_count > 0 else f"✅ {self.total}/{self.total}"
-        print(f"{self.project} {summary}: {self.project.url}")
+        summary = f"❌ {failed_count:2}/{self.total:2}" if failed_count > 0 else f"✅ {self.total:2}/{self.total:2}"
+        print(f"{title}{summary}:{self.project}→{self.project.url}")
         if failed_count > 0:
             # Sort checks by path
             sorted_checks = sorted(self.checks, key=lambda c: c.path or "")
@@ -308,9 +308,9 @@ def main(_argv=None):
                     local_projects.append(project)
             projects = local_projects
 
-        for project in projects:
+        for i,project in enumerate(projects):
             checker = CheckOS(args=args, project=project)
-            checker.check()
+            checker.check(f"{i+1:3}:")
     except Exception as ex:
         if args.debug:
             print(traceback.format_exc())
