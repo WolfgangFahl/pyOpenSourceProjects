@@ -49,6 +49,8 @@ class CheckOS:
         self.project = project
         self.project_path = os.path.join(self.workspace, project.id)
         self.checks = []
+        # python 3.12 is max version
+        self.max_python_version_minor=12
 
     @property
     def total(self) -> int:
@@ -104,8 +106,9 @@ class CheckOS:
                     content = file_exists.content
 
                     if file == "build.yml":
-                        min_version = int(self.requires_python.split('.')[-1])
-                        python_versions = f"""python-version: [ {', '.join([f"'3.{i}'" for i in range(min_version, 13)])} ]"""
+                        min_python_version_minor = int(self.requires_python.split('.')[-1])
+                        self.add_check(min_python_version_minor==self.min_python_version_minor,msg=f"{min_python_version_minor} (build.yml)!={self.min_python_version_minor} (pyprojec.toml)",path=file_path)
+                        python_versions = f"""python-version: [ {', '.join([f"'3.{i}'" for i in range(self.min_python_version_minor, self.max_python_version_minor+1)])} ]"""
                         self.add_content_check(
                             content,
                             python_versions,
@@ -186,6 +189,9 @@ class CheckOS:
             self.add_content_check(readme_content, "readthedocs", readme_path, negative=True)
 
     def check_pyproject_toml(self):
+        """
+        pyproject.toml
+        """
         toml_path = os.path.join(self.project_path, "pyproject.toml")
         toml_exists = self.add_path_check(toml_path)
         if toml_exists.ok:
@@ -197,12 +203,17 @@ class CheckOS:
                 requires_python_check=self.add_check("requires-python" in toml_dict["project"], "requires-python", toml_path)
                 if requires_python_check.ok:
                     self.requires_python = toml_dict["project"]["requires-python"]
-                    self.min_python_version = version.parse(self.requires_python.replace(">=", ""))
+                    min_python_version = version.parse(self.requires_python.replace(">=", ""))
                     min_version_needed="3.9"
-                    version_ok=self.min_python_version >= version.parse(min_version_needed)
+                    version_ok=min_python_version >= version.parse(min_version_needed)
                     self.add_check(version_ok, f"requires-python>={min_version_needed}", toml_path)
+                    self.min_python_version_minor=int(str(min_python_version).split('.')[-1])
+                    for minor_version in range(self.min_python_version_minor, self.max_python_version_minor+1):
+                        needle=f"Programming Language :: Python :: 3.{minor_version}"
+                        self.add_content_check(content, needle, toml_path)
             self.add_content_check(content, "hatchling", toml_path)
             self.add_content_check(content,"[tool.hatch.build.targets.wheel.sources]",toml_path)
+
 
     def check(self,title:str):
         """
@@ -210,9 +221,10 @@ class CheckOS:
         """
         self.check_local()
         self.check_pyproject_toml()
+        self.check_github_workflows()
         self.check_readme()
         self.check_scripts()
-        self.check_github_workflows()
+
 
         # ok_count=len(ok_checks)
         failed_count = len(self.failed_checks)
