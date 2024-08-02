@@ -272,6 +272,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#osprojects.checkos.CheckOS.check_pyproject_toml" class="md-nav__link">
+    <span class="md-ellipsis">
+      check_pyproject_toml
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -694,6 +703,15 @@
   <a href="#osprojects.checkos.CheckOS.check" class="md-nav__link">
     <span class="md-ellipsis">
       check
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#osprojects.checkos.CheckOS.check_pyproject_toml" class="md-nav__link">
+    <span class="md-ellipsis">
+      check_pyproject_toml
     </span>
   </a>
   
@@ -1345,7 +1363,19 @@
 <span class="normal">246</span>
 <span class="normal">247</span>
 <span class="normal">248</span>
-<span class="normal">249</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">CheckOS</span><span class="p">:</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">CheckOS</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    check the open source projects</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -1357,6 +1387,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">project</span> <span class="o">=</span> <span class="n">project</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">project_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">workspace</span><span class="p">,</span> <span class="n">project</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">checks</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># python 3.12 is max version</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_python_version_minor</span><span class="o">=</span><span class="mi">12</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">total</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
@@ -1412,8 +1444,9 @@
                     <span class="n">content</span> <span class="o">=</span> <span class="n">file_exists</span><span class="o">.</span><span class="n">content</span>
 
                     <span class="k">if</span> <span class="n">file</span> <span class="o">==</span> <span class="s2">&quot;build.yml&quot;</span><span class="p">:</span>
-                        <span class="n">min_version</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">requires_python</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-                        <span class="n">python_versions</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;python-version: [ </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;&#39;3.</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="nb">range</span><span class="p">(</span><span class="n">min_version</span><span class="p">,</span><span class="w"> </span><span class="mi">13</span><span class="p">)])</span><span class="si">}</span><span class="s2"> ]&quot;&quot;&quot;</span>
+                        <span class="n">min_python_version_minor</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">requires_python</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span><span class="n">min_python_version_minor</span><span class="o">==</span><span class="bp">self</span><span class="o">.</span><span class="n">min_python_version_minor</span><span class="p">,</span><span class="n">msg</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">min_python_version_minor</span><span class="si">}</span><span class="s2"> (build.yml)!=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">min_python_version_minor</span><span class="si">}</span><span class="s2"> (pyprojec.toml)&quot;</span><span class="p">,</span><span class="n">path</span><span class="o">=</span><span class="n">file_path</span><span class="p">)</span>
+                        <span class="n">python_versions</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;python-version: [ </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;&#39;3.</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">min_python_version_minor</span><span class="p">,</span><span class="w"> </span><span class="bp">self</span><span class="o">.</span><span class="n">max_python_version_minor</span><span class="o">+</span><span class="mi">1</span><span class="p">)])</span><span class="si">}</span><span class="s2"> ]&quot;&quot;&quot;</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span>
                             <span class="n">content</span><span class="p">,</span>
                             <span class="n">python_versions</span><span class="p">,</span>
@@ -1468,7 +1501,7 @@
                         <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="s2">&quot;sphinx&quot;</span><span class="p">,</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">negative</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span><span class="n">content</span><span class="p">,</span><span class="s2">&quot;WF 2024-07-30 - updated&quot;</span><span class="p">,</span><span class="n">file_path</span><span class="p">)</span>
                     <span class="k">if</span> <span class="n">file</span><span class="o">==</span><span class="s2">&quot;release&quot;</span><span class="p">:</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="s2">&quot;scripts/docs -d&quot;</span><span class="p">,</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">negative</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="s2">&quot;scripts/doc -d&quot;</span><span class="p">,</span> <span class="n">file_path</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">check_readme</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">readme_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">project_path</span><span class="p">,</span> <span class="s2">&quot;README.md&quot;</span><span class="p">)</span>
@@ -1494,6 +1527,9 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span><span class="n">readme_content</span><span class="p">,</span> <span class="s2">&quot;readthedocs&quot;</span><span class="p">,</span> <span class="n">readme_path</span><span class="p">,</span> <span class="n">negative</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">check_pyproject_toml</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        pyproject.toml</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">toml_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">project_path</span><span class="p">,</span> <span class="s2">&quot;pyproject.toml&quot;</span><span class="p">)</span>
         <span class="n">toml_exists</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_path_check</span><span class="p">(</span><span class="n">toml_path</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">toml_exists</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span>
@@ -1505,27 +1541,33 @@
                 <span class="n">requires_python_check</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span><span class="s2">&quot;requires-python&quot;</span> <span class="ow">in</span> <span class="n">toml_dict</span><span class="p">[</span><span class="s2">&quot;project&quot;</span><span class="p">],</span> <span class="s2">&quot;requires-python&quot;</span><span class="p">,</span> <span class="n">toml_path</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">requires_python_check</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">requires_python</span> <span class="o">=</span> <span class="n">toml_dict</span><span class="p">[</span><span class="s2">&quot;project&quot;</span><span class="p">][</span><span class="s2">&quot;requires-python&quot;</span><span class="p">]</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">min_python_version</span> <span class="o">=</span> <span class="n">version</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">requires_python</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;&gt;=&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+                    <span class="n">min_python_version</span> <span class="o">=</span> <span class="n">version</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">requires_python</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;&gt;=&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
                     <span class="n">min_version_needed</span><span class="o">=</span><span class="s2">&quot;3.9&quot;</span>
-                    <span class="n">version_ok</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_python_version</span> <span class="o">&gt;=</span> <span class="n">version</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">min_version_needed</span><span class="p">)</span>
+                    <span class="n">version_ok</span><span class="o">=</span><span class="n">min_python_version</span> <span class="o">&gt;=</span> <span class="n">version</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">min_version_needed</span><span class="p">)</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span><span class="n">version_ok</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;requires-python&gt;=</span><span class="si">{</span><span class="n">min_version_needed</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">toml_path</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">min_python_version_minor</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">min_python_version</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                    <span class="k">for</span> <span class="n">minor_version</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">min_python_version_minor</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_python_version_minor</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+                        <span class="n">needle</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Programming Language :: Python :: 3.</span><span class="si">{</span><span class="n">minor_version</span><span class="si">}</span><span class="s2">&quot;</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">needle</span><span class="p">,</span> <span class="n">toml_path</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="s2">&quot;hatchling&quot;</span><span class="p">,</span> <span class="n">toml_path</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span><span class="n">content</span><span class="p">,</span><span class="s2">&quot;[tool.hatch.build.targets.wheel.sources]&quot;</span><span class="p">,</span><span class="n">toml_path</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">check</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">check</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">title</span><span class="p">:</span><span class="nb">str</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Check the given project and print results</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">check_local</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">check_pyproject_toml</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_github_workflows</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">check_readme</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">check_scripts</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">check_github_workflows</span><span class="p">()</span>
+
 
         <span class="c1"># ok_count=len(ok_checks)</span>
         <span class="n">failed_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">failed_checks</span><span class="p">)</span>
-        <span class="n">summary</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;❌ </span><span class="si">{</span><span class="n">failed_count</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">failed_count</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;✅ </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">project</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">summary</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">project</span><span class="o">.</span><span class="n">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">summary</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;❌ </span><span class="si">{</span><span class="n">failed_count</span><span class="si">:</span><span class="s2">2</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total</span><span class="si">:</span><span class="s2">2</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">failed_count</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;✅ </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total</span><span class="si">:</span><span class="s2">2</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total</span><span class="si">:</span><span class="s2">2</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">title</span><span class="si">}{</span><span class="n">summary</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">project</span><span class="si">}</span><span class="s2">→</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">project</span><span class="o">.</span><span class="n">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">failed_count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="c1"># Sort checks by path</span>
             <span class="n">sorted_checks</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checks</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">path</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
@@ -1574,7 +1616,7 @@
 
 
 <h4 id="osprojects.checkos.CheckOS.check" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">check</span><span class="p">()</span></code>
+            <code class="highlight language-python"><span class="n">check</span><span class="p">(</span><span class="n">title</span><span class="p">)</span></code>
 
 </h4>
 
@@ -1585,18 +1627,7 @@
 
             <details class="quote">
               <summary>Source code in <code>osprojects/checkos.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">207</span>
-<span class="normal">208</span>
-<span class="normal">209</span>
-<span class="normal">210</span>
-<span class="normal">211</span>
-<span class="normal">212</span>
-<span class="normal">213</span>
-<span class="normal">214</span>
-<span class="normal">215</span>
-<span class="normal">216</span>
-<span class="normal">217</span>
-<span class="normal">218</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">218</span>
 <span class="normal">219</span>
 <span class="normal">220</span>
 <span class="normal">221</span>
@@ -1627,20 +1658,33 @@
 <span class="normal">246</span>
 <span class="normal">247</span>
 <span class="normal">248</span>
-<span class="normal">249</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">check</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">check</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">title</span><span class="p">:</span><span class="nb">str</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Check the given project and print results</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">check_local</span><span class="p">()</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">check_pyproject_toml</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">check_github_workflows</span><span class="p">()</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">check_readme</span><span class="p">()</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">check_scripts</span><span class="p">()</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">check_github_workflows</span><span class="p">()</span>
+
 
     <span class="c1"># ok_count=len(ok_checks)</span>
     <span class="n">failed_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">failed_checks</span><span class="p">)</span>
-    <span class="n">summary</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;❌ </span><span class="si">{</span><span class="n">failed_count</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">failed_count</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;✅ </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total</span><span class="si">}</span><span class="s2">&quot;</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">project</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">summary</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">project</span><span class="o">.</span><span class="n">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">summary</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;❌ </span><span class="si">{</span><span class="n">failed_count</span><span class="si">:</span><span class="s2">2</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total</span><span class="si">:</span><span class="s2">2</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">failed_count</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;✅ </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total</span><span class="si">:</span><span class="s2">2</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total</span><span class="si">:</span><span class="s2">2</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">title</span><span class="si">}{</span><span class="n">summary</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">project</span><span class="si">}</span><span class="s2">→</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">project</span><span class="o">.</span><span class="n">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">failed_count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="c1"># Sort checks by path</span>
         <span class="n">sorted_checks</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checks</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">path</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
@@ -1676,6 +1720,76 @@
 
 </div>
 
+<div class="doc doc-object doc-function">
+
+
+<h4 id="osprojects.checkos.CheckOS.check_pyproject_toml" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">check_pyproject_toml</span><span class="p">()</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+      <p>pyproject.toml</p>
+
+            <details class="quote">
+              <summary>Source code in <code>osprojects/checkos.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">check_pyproject_toml</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    pyproject.toml</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">toml_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">project_path</span><span class="p">,</span> <span class="s2">&quot;pyproject.toml&quot;</span><span class="p">)</span>
+    <span class="n">toml_exists</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_path_check</span><span class="p">(</span><span class="n">toml_path</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">toml_exists</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span>
+        <span class="n">content</span><span class="o">=</span><span class="n">toml_exists</span><span class="o">.</span><span class="n">content</span>
+        <span class="n">toml_dict</span> <span class="o">=</span> <span class="n">tomllib</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="n">project_check</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span><span class="s2">&quot;project&quot;</span> <span class="ow">in</span> <span class="n">toml_dict</span><span class="p">,</span> <span class="s2">&quot;[project]&quot;</span><span class="p">,</span> <span class="n">toml_path</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">project_check</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">project_name</span><span class="o">=</span><span class="n">toml_dict</span><span class="p">[</span><span class="s2">&quot;project&quot;</span><span class="p">][</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+            <span class="n">requires_python_check</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span><span class="s2">&quot;requires-python&quot;</span> <span class="ow">in</span> <span class="n">toml_dict</span><span class="p">[</span><span class="s2">&quot;project&quot;</span><span class="p">],</span> <span class="s2">&quot;requires-python&quot;</span><span class="p">,</span> <span class="n">toml_path</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">requires_python_check</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">requires_python</span> <span class="o">=</span> <span class="n">toml_dict</span><span class="p">[</span><span class="s2">&quot;project&quot;</span><span class="p">][</span><span class="s2">&quot;requires-python&quot;</span><span class="p">]</span>
+                <span class="n">min_python_version</span> <span class="o">=</span> <span class="n">version</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">requires_python</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;&gt;=&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+                <span class="n">min_version_needed</span><span class="o">=</span><span class="s2">&quot;3.9&quot;</span>
+                <span class="n">version_ok</span><span class="o">=</span><span class="n">min_python_version</span> <span class="o">&gt;=</span> <span class="n">version</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">min_version_needed</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span><span class="n">version_ok</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;requires-python&gt;=</span><span class="si">{</span><span class="n">min_version_needed</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">toml_path</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">min_python_version_minor</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">min_python_version</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">minor_version</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">min_python_version_minor</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_python_version_minor</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+                    <span class="n">needle</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Programming Language :: Python :: 3.</span><span class="si">{</span><span class="n">minor_version</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">needle</span><span class="p">,</span> <span class="n">toml_path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="s2">&quot;hatchling&quot;</span><span class="p">,</span> <span class="n">toml_path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_content_check</span><span class="p">(</span><span class="n">content</span><span class="p">,</span><span class="s2">&quot;[tool.hatch.build.targets.wheel.sources]&quot;</span><span class="p">,</span><span class="n">toml_path</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
 
 
   </div>
@@ -1700,19 +1814,7 @@
 
             <details class="quote">
               <summary>Source code in <code>osprojects/checkos.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">252</span>
-<span class="normal">253</span>
-<span class="normal">254</span>
-<span class="normal">255</span>
-<span class="normal">256</span>
-<span class="normal">257</span>
-<span class="normal">258</span>
-<span class="normal">259</span>
-<span class="normal">260</span>
-<span class="normal">261</span>
-<span class="normal">262</span>
-<span class="normal">263</span>
-<span class="normal">264</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">264</span>
 <span class="normal">265</span>
 <span class="normal">266</span>
 <span class="normal">267</span>
@@ -1765,7 +1867,19 @@
 <span class="normal">314</span>
 <span class="normal">315</span>
 <span class="normal">316</span>
-<span class="normal">317</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">_argv</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="normal">317</span>
+<span class="normal">318</span>
+<span class="normal">319</span>
+<span class="normal">320</span>
+<span class="normal">321</span>
+<span class="normal">322</span>
+<span class="normal">323</span>
+<span class="normal">324</span>
+<span class="normal">325</span>
+<span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span>
+<span class="normal">329</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">_argv</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    main command line entry point</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -1824,9 +1938,9 @@
                     <span class="n">local_projects</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">project</span><span class="p">)</span>
             <span class="n">projects</span> <span class="o">=</span> <span class="n">local_projects</span>
 
-        <span class="k">for</span> <span class="n">project</span> <span class="ow">in</span> <span class="n">projects</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">project</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">projects</span><span class="p">):</span>
             <span class="n">checker</span> <span class="o">=</span> <span class="n">CheckOS</span><span class="p">(</span><span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">,</span> <span class="n">project</span><span class="o">=</span><span class="n">project</span><span class="p">)</span>
-            <span class="n">checker</span><span class="o">.</span><span class="n">check</span><span class="p">()</span>
+            <span class="n">checker</span><span class="o">.</span><span class="n">check</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">:</span><span class="s2">3</span><span class="si">}</span><span class="s2">:&quot;</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">())</span>
