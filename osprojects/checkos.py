@@ -162,6 +162,8 @@ class CheckOS:
                     if file=="doc":
                         self.add_content_check(content, "sphinx", file_path, negative=True)
                         self.add_content_check(content,"WF 2024-07-30 - updated",file_path)
+                    if file=="test":
+                        self.add_content_check(content,"WF 2024-08-03",file_path)
                     if file=="release":
                         self.add_content_check(content, "scripts/doc -d", file_path)
 
