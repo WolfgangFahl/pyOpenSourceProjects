@@ -8,6 +8,8 @@ import argparse
 import os
 from argparse import Namespace
 from dataclasses import dataclass
+from git import Repo
+from git.exc import InvalidGitRepositoryError, NoSuchPathError
 from typing import List
 # original at ngwidgets - use redundant local copy ...
 from osprojects.editor import Editor
@@ -93,6 +95,9 @@ class CheckOS:
         return local
 
     def check_github_workflows(self):
+        """
+        check the github workflow files
+        """
         workflows_path = os.path.join(self.project_path, ".github", "workflows")
         workflows_exist = self.add_path_check(workflows_path)
 
@@ -170,6 +175,9 @@ class CheckOS:
     def check_readme(self):
         readme_path = os.path.join(self.project_path, "README.md")
         readme_exists = self.add_path_check(readme_path)
+        if not hasattr(self, "project_name"):
+            self.add_check(False, "project_name from pyproject.toml needed for README.md check", self.project_path)
+            return
         if readme_exists.ok:
             readme_content = readme_exists.content
             badge_lines = [
@@ -190,7 +198,7 @@ class CheckOS:
                 )
             self.add_content_check(readme_content, "readthedocs", readme_path, negative=True)
 
-    def check_pyproject_toml(self):
+    def check_pyproject_toml(self)->bool:
         """
         pyproject.toml
         """
@@ -215,18 +223,63 @@ class CheckOS:
                         self.add_content_check(content, needle, toml_path)
             self.add_content_check(content, "hatchling", toml_path)
             self.add_content_check(content,"[tool.hatch.build.targets.wheel.sources]",toml_path)
+        return toml_exists.ok
 
+    def check_git(self):
+        """
+        Check git repository information using gitpython
+        """
+        try:
+            repo = Repo(self.project_path)
 
-    def check(self,title:str):
+            # Check if it's actually a git repository
+            if not repo.bare:
+                self.add_check(True, "Is a git repository", self.project_path)
+
+                # Get the remote URL
+                try:
+                    remote_url = repo.remotes.origin.url
+                    self.add_check(True, "Has remote origin", self.project_path)
+
+                    # Extract owner and repository name from the URL
+                    parts = remote_url.split('/')
+                    git_owner = parts[-2]
+                    git_repo = parts[-1].replace('.git', '')
+
+                    # Compare with the project information we have
+                    owner_match = git_owner.lower() == self.project.owner.lower()
+                    self.add_check(owner_match, f"Git owner ({git_owner}) matches project owner ({self.project.owner})", self.project_path)
+
+                    repo_match = git_repo.lower() == self.project.id.lower()
+                    self.add_check(repo_match, f"Git repo name ({git_repo}) matches project id ({self.project.id})", self.project_path)
+
+                except AttributeError:
+                    self.add_check(False, "No remote origin found", self.project_path)
+
+                # Check if there are uncommitted changes
+                if repo.is_dirty():
+                    self.add_check(False, "Repository has uncommitted changes", self.project_path)
+                else:
+                    self.add_check(True, "Repository is clean", self.project_path)
+
+            else:
+                self.add_check(False, "Not a valid git repository (bare repository)", self.project_path)
+
+        except InvalidGitRepositoryError:
+            self.add_check(False, "Not a valid git repository", self.project_path)
+        except NoSuchPathError:
+            self.add_check(False, "Git repository path does not exist", self.project_path)
+
+    def check(self, title:str):
         """
         Check the given project and print results
         """
         self.check_local()
-        self.check_pyproject_toml()
-        self.check_github_workflows()
-        self.check_readme()
-        self.check_scripts()
-
+        self.check_git()
+        if self.check_pyproject_toml():
+            self.check_github_workflows()
+            self.check_readme()
+            self.check_scripts()
 
         # ok_count=len(ok_checks)
         failed_count = len(self.failed_checks)
@@ -321,6 +374,16 @@ def main(_argv=None):
                 if checker.check_local().ok:
                     local_projects.append(project)
             projects = local_projects
+
+        # filter for git ownership
+        filtered_projects = []
+        for project in projects:
+            checker = CheckOS(args=args, project=project)
+            checker.check_git()
+            git_owner_check = next((check for check in checker.checks if "Git owner" in check.msg), None)
+            if git_owner_check and git_owner_check.ok:
+                filtered_projects.append(project)
+        projects = filtered_projects
 
         for i,project in enumerate(projects):
             checker = CheckOS(args=args, project=project)
