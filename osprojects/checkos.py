@@ -14,6 +14,7 @@ from typing import List
 # original at ngwidgets - use redundant local copy ...
 from osprojects.editor import Editor
 from osprojects.osproject import GitHub, OsProject
+import requests
 import tomllib
 import traceback
 from packaging import version
@@ -225,17 +226,22 @@ class CheckOS:
             self.add_content_check(content,"[tool.hatch.build.targets.wheel.sources]",toml_path)
         return toml_exists.ok
 
-    def check_git(self):
+    def check_git(self)->bool:
         """
         Check git repository information using gitpython
+
+        Returns:
+            bool: True if git owner matches project owner and the repo is not a fork
         """
+        owner_match=False
+        is_fork=False
         try:
             repo = Repo(self.project_path)
-
             # Check if it's actually a git repository
             if not repo.bare:
                 self.add_check(True, "Is a git repository", self.project_path)
-
+                self.git_dict=requests.get(f"https://api.github.com/repos/{self.project.owner}/{self.project.id}").json()
+                is_fork=self.git_dict.get('fork', False)
                 # Get the remote URL
                 try:
                     remote_url = repo.remotes.origin.url
@@ -249,7 +255,6 @@ class CheckOS:
                     # Compare with the project information we have
                     owner_match = git_owner.lower() == self.project.owner.lower()
                     self.add_check(owner_match, f"Git owner ({git_owner}) matches project owner ({self.project.owner})", self.project_path)
-
                     repo_match = git_repo.lower() == self.project.id.lower()
                     self.add_check(repo_match, f"Git repo name ({git_repo}) matches project id ({self.project.id})", self.project_path)
 
@@ -269,6 +274,7 @@ class CheckOS:
             self.add_check(False, "Not a valid git repository", self.project_path)
         except NoSuchPathError:
             self.add_check(False, "Git repository path does not exist", self.project_path)
+        return owner_match and not is_fork
 
     def check(self, title:str):
         """
@@ -372,18 +378,10 @@ def main(_argv=None):
             for project in projects:
                 checker = CheckOS(args=args, project=project)
                 if checker.check_local().ok:
-                    local_projects.append(project)
+                    # non forked owned by owner
+                    if checker.check_git():
+                        local_projects.append(project)
             projects = local_projects
-
-        # filter for git ownership
-        filtered_projects = []
-        for project in projects:
-            checker = CheckOS(args=args, project=project)
-            checker.check_git()
-            git_owner_check = next((check for check in checker.checks if "Git owner" in check.msg), None)
-            if git_owner_check and git_owner_check.ok:
-                filtered_projects.append(project)
-        projects = filtered_projects
 
         for i,project in enumerate(projects):
             checker = CheckOS(args=args, project=project)
