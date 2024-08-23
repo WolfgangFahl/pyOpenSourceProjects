@@ -6,18 +6,21 @@ Created on 2024-07-30
 """
 import argparse
 import os
+import tomllib
+import traceback
 from argparse import Namespace
 from dataclasses import dataclass
+from typing import List
+
 from git import Repo
 from git.exc import InvalidGitRepositoryError, NoSuchPathError
-from typing import List
+from packaging import version
+from tqdm import tqdm
+
 # original at ngwidgets - use redundant local copy ...
 from osprojects.editor import Editor
 from osprojects.osproject import GitHub, OsProject
-import requests
-import tomllib
-import traceback
-from packaging import version
+
 
 @dataclass
 class Check:
@@ -40,12 +43,14 @@ class Check:
         check = Check(ok, path, msg=path, content=content)
         return check
 
+
 class CheckOS:
     """
     check the open source projects
     """
 
-    def __init__(self, args: Namespace, project: OsProject):
+    def __init__(self, args: Namespace, github: GitHub, project: OsProject):
+        self.github = github
         self.args = args
         self.verbose = args.verbose
         self.workspace = args.workspace
@@ -53,7 +58,7 @@ class CheckOS:
         self.project_path = os.path.join(self.workspace, project.id)
         self.checks = []
         # python 3.12 is max version
-        self.max_python_version_minor=12
+        self.max_python_version_minor = 12
 
     @property
     def total(self) -> int:
@@ -69,20 +74,24 @@ class CheckOS:
         failed_checks = [check for check in self.checks if not check.ok]
         return failed_checks
 
-    def add_check(self, ok, msg:str="",path: str=None,negative:bool=False) -> Check:
+    def add_check(
+        self, ok, msg: str = "", path: str = None, negative: bool = False
+    ) -> Check:
         if not path:
             raise ValueError("path parameter missing")
-        marker=""
+        marker = ""
         if negative:
-            ok=not ok
-            marker="⚠ ️"
+            ok = not ok
+            marker = "⚠ ️"
         check = Check(ok=ok, path=path, msg=f"{marker}{msg}{path}")
         self.checks.append(check)
         return check
 
-    def add_content_check(self, content: str, needle: str, path: str, negative:bool=False) -> Check:
-        ok=needle in content
-        check=self.add_check(ok, msg=f"{needle} in ", path=path,negative=negative)
+    def add_content_check(
+        self, content: str, needle: str, path: str, negative: bool = False
+    ) -> Check:
+        ok = needle in content
+        check = self.add_check(ok, msg=f"{needle} in ", path=path, negative=negative)
         return check
 
     def add_path_check(self, path) -> Check:
@@ -112,8 +121,14 @@ class CheckOS:
                     content = file_exists.content
 
                     if file == "build.yml":
-                        min_python_version_minor = int(self.requires_python.split('.')[-1])
-                        self.add_check(min_python_version_minor==self.min_python_version_minor,msg=f"{min_python_version_minor} (build.yml)!={self.min_python_version_minor} (pyprojec.toml)",path=file_path)
+                        min_python_version_minor = int(
+                            self.requires_python.split(".")[-1]
+                        )
+                        self.add_check(
+                            min_python_version_minor == self.min_python_version_minor,
+                            msg=f"{min_python_version_minor} (build.yml)!={self.min_python_version_minor} (pyprojec.toml)",
+                            path=file_path,
+                        )
                         python_versions = f"""python-version: [ {', '.join([f"'3.{i}'" for i in range(self.min_python_version_minor, self.max_python_version_minor+1)])} ]"""
                         self.add_content_check(
                             content,
@@ -125,7 +140,9 @@ class CheckOS:
                             "os: [ubuntu-latest, macos-latest, windows-latest]",
                             file_path,
                         )
-                        self.add_content_check(content, "uses: actions/checkout@v4", file_path)
+                        self.add_content_check(
+                            content, "uses: actions/checkout@v4", file_path
+                        )
                         self.add_content_check(
                             content,
                             "uses: actions/setup-python@v5",
@@ -133,17 +150,20 @@ class CheckOS:
                         )
 
                         self.add_content_check(
-                            content,
-                            "sphinx",
-                            file_path,
-                            negative=True
+                            content, "sphinx", file_path, negative=True
                         )
-                        scripts_ok="scripts/install" in content and "scripts/test" in content or "scripts/installAndTest" in content
-                        self.add_check(scripts_ok,"install and test", file_path)
+                        scripts_ok = (
+                            "scripts/install" in content
+                            and "scripts/test" in content
+                            or "scripts/installAndTest" in content
+                        )
+                        self.add_check(scripts_ok, "install and test", file_path)
 
                     elif file == "upload-to-pypi.yml":
                         self.add_content_check(content, "id-token: write", file_path)
-                        self.add_content_check(content, "uses: actions/checkout@v4", file_path)
+                        self.add_content_check(
+                            content, "uses: actions/checkout@v4", file_path
+                        )
                         self.add_content_check(
                             content,
                             "uses: actions/setup-python@v5",
@@ -165,19 +185,27 @@ class CheckOS:
                 file_exists = self.add_path_check(file_path)
                 if file_exists.ok:
                     content = file_exists.content
-                    if file=="doc":
-                        self.add_content_check(content, "sphinx", file_path, negative=True)
-                        self.add_content_check(content,"WF 2024-07-30 - updated",file_path)
-                    if file=="test":
-                        self.add_content_check(content,"WF 2024-08-03",file_path)
-                    if file=="release":
+                    if file == "doc":
+                        self.add_content_check(
+                            content, "sphinx", file_path, negative=True
+                        )
+                        self.add_content_check(
+                            content, "WF 2024-07-30 - updated", file_path
+                        )
+                    if file == "test":
+                        self.add_content_check(content, "WF 2024-08-03", file_path)
+                    if file == "release":
                         self.add_content_check(content, "scripts/doc -d", file_path)
 
     def check_readme(self):
         readme_path = os.path.join(self.project_path, "README.md")
         readme_exists = self.add_path_check(readme_path)
         if not hasattr(self, "project_name"):
-            self.add_check(False, "project_name from pyproject.toml needed for README.md check", self.project_path)
+            self.add_check(
+                False,
+                "project_name from pyproject.toml needed for README.md check",
+                self.project_path,
+            )
             return
         if readme_exists.ok:
             readme_content = readme_exists.content
@@ -197,86 +225,118 @@ class CheckOS:
                     needle=formatted_line,
                     path=readme_path,
                 )
-            self.add_content_check(readme_content, "readthedocs", readme_path, negative=True)
+            self.add_content_check(
+                readme_content, "readthedocs", readme_path, negative=True
+            )
 
-    def check_pyproject_toml(self)->bool:
+    def check_pyproject_toml(self) -> bool:
         """
         pyproject.toml
         """
         toml_path = os.path.join(self.project_path, "pyproject.toml")
         toml_exists = self.add_path_check(toml_path)
         if toml_exists.ok:
-            content=toml_exists.content
+            content = toml_exists.content
             toml_dict = tomllib.loads(content)
-            project_check=self.add_check("project" in toml_dict, "[project]", toml_path)
+            project_check = self.add_check(
+                "project" in toml_dict, "[project]", toml_path
+            )
             if project_check.ok:
-                self.project_name=toml_dict["project"]["name"]
-                requires_python_check=self.add_check("requires-python" in toml_dict["project"], "requires-python", toml_path)
+                self.project_name = toml_dict["project"]["name"]
+                requires_python_check = self.add_check(
+                    "requires-python" in toml_dict["project"],
+                    "requires-python",
+                    toml_path,
+                )
                 if requires_python_check.ok:
                     self.requires_python = toml_dict["project"]["requires-python"]
-                    min_python_version = version.parse(self.requires_python.replace(">=", ""))
-                    min_version_needed="3.9"
-                    version_ok=min_python_version >= version.parse(min_version_needed)
-                    self.add_check(version_ok, f"requires-python>={min_version_needed}", toml_path)
-                    self.min_python_version_minor=int(str(min_python_version).split('.')[-1])
-                    for minor_version in range(self.min_python_version_minor, self.max_python_version_minor+1):
-                        needle=f"Programming Language :: Python :: 3.{minor_version}"
+                    min_python_version = version.parse(
+                        self.requires_python.replace(">=", "")
+                    )
+                    min_version_needed = "3.9"
+                    version_ok = min_python_version >= version.parse(min_version_needed)
+                    self.add_check(
+                        version_ok, f"requires-python>={min_version_needed}", toml_path
+                    )
+                    self.min_python_version_minor = int(
+                        str(min_python_version).split(".")[-1]
+                    )
+                    for minor_version in range(
+                        self.min_python_version_minor, self.max_python_version_minor + 1
+                    ):
+                        needle = f"Programming Language :: Python :: 3.{minor_version}"
                         self.add_content_check(content, needle, toml_path)
             self.add_content_check(content, "hatchling", toml_path)
-            self.add_content_check(content,"[tool.hatch.build.targets.wheel.sources]",toml_path)
+            self.add_content_check(
+                content, "[tool.hatch.build.targets.wheel.sources]", toml_path
+            )
         return toml_exists.ok
 
-    def check_git(self)->bool:
+    def check_git(self) -> bool:
         """
-        Check git repository information using gitpython
+        Check git repository information using GitHub class
 
         Returns:
             bool: True if git owner matches project owner and the repo is not a fork
         """
-        owner_match=False
-        is_fork=False
+        owner_match = False
+        is_fork = False
         try:
-            repo = Repo(self.project_path)
-            # Check if it's actually a git repository
-            if not repo.bare:
-                self.add_check(True, "Is a git repository", self.project_path)
-                self.git_dict=requests.get(f"https://api.github.com/repos/{self.project.owner}/{self.project.id}").json()
-                is_fork=self.git_dict.get('fork', False)
-                # Get the remote URL
-                try:
-                    remote_url = repo.remotes.origin.url
-                    self.add_check(True, "Has remote origin", self.project_path)
+            repo_info = self.github.get_project(self.project.owner, self.project.id)
+            is_fork = repo_info.forks > 0
 
-                    # Extract owner and repository name from the URL
-                    parts = remote_url.split('/')
-                    git_owner = parts[-2]
-                    git_repo = parts[-1].replace('.git', '')
+            self.add_check(True, "Is a git repository", self.project_path)
+            self.add_check(True, "Has remote origin", self.project_path)
 
-                    # Compare with the project information we have
-                    owner_match = git_owner.lower() == self.project.owner.lower()
-                    self.add_check(owner_match, f"Git owner ({git_owner}) matches project owner ({self.project.owner})", self.project_path)
-                    repo_match = git_repo.lower() == self.project.id.lower()
-                    self.add_check(repo_match, f"Git repo name ({git_repo}) matches project id ({self.project.id})", self.project_path)
+            owner_match = repo_info.owner.lower() == self.project.owner.lower()
+            self.add_check(
+                owner_match,
+                f"Git owner ({repo_info.owner}) matches project owner ({self.project.owner})",
+                self.project_path,
+            )
 
-                except AttributeError:
-                    self.add_check(False, "No remote origin found", self.project_path)
+            repo_match = repo_info.id.lower() == self.project.id.lower()
+            self.add_check(
+                repo_match,
+                f"Git repo name ({repo_info.id}) matches project id ({self.project.id})",
+                self.project_path,
+            )
 
-                # Check if there are uncommitted changes
-                if repo.is_dirty():
-                    self.add_check(False, "Repository has uncommitted changes", self.project_path)
-                else:
-                    self.add_check(True, "Repository is clean", self.project_path)
+            # Check if there are uncommitted changes (this still requires local git access)
+            local_repo = Repo(self.project_path)
+            self.add_check(
+                not local_repo.is_dirty(), "uncomitted changes for", self.project_path
+            )
 
+            # Check latest GitHub Actions workflow run
+            latest_run = self.github.get_latest_workflow_run(self.project)
+            if latest_run:
+                self.add_check(
+                    latest_run["conclusion"] == "success",
+                    f"Latest GitHub Actions run: {latest_run['conclusion']}",
+                    latest_run["html_url"],
+                )
             else:
-                self.add_check(False, "Not a valid git repository (bare repository)", self.project_path)
+                self.add_check(
+                    False,
+                    "No GitHub Actions runs found",
+                    self.github.ticketUrl(self.project),
+                )
 
         except InvalidGitRepositoryError:
             self.add_check(False, "Not a valid git repository", self.project_path)
         except NoSuchPathError:
-            self.add_check(False, "Git repository path does not exist", self.project_path)
+            self.add_check(
+                False, "Git repository path does not exist", self.project_path
+            )
+        except Exception as e:
+            self.add_check(
+                False, f"Error checking git repository: {str(e)}", self.project_path
+            )
+
         return owner_match and not is_fork
 
-    def check(self, title:str):
+    def check(self, title: str):
         """
         Check the given project and print results
         """
@@ -289,7 +349,11 @@ class CheckOS:
 
         # ok_count=len(ok_checks)
         failed_count = len(self.failed_checks)
-        summary = f"❌ {failed_count:2}/{self.total:2}" if failed_count > 0 else f"✅ {self.total:2}/{self.total:2}"
+        summary = (
+            f"❌ {failed_count:2}/{self.total:2}"
+            if failed_count > 0
+            else f"✅ {self.total:2}/{self.total:2}"
+        )
         print(f"{title}{summary}:{self.project}→{self.project.url}")
         if failed_count > 0:
             # Sort checks by path
@@ -307,17 +371,17 @@ class CheckOS:
                 path_failed = sum(1 for c in path_checks if not c.ok)
                 if path_failed > 0 or self.args.debug:
                     print(f"❌ {path}: {path_failed}")
-                    i=0
+                    i = 0
                     for check in path_checks:
-                        show=not check.ok or self.args.debug
+                        show = not check.ok or self.args.debug
                         if show:
-                            i+=1
+                            i += 1
                             print(f"    {i:3}{check.marker}:{check.msg}")
 
                     if self.args.editor and path_failed > 0:
                         if os.path.isfile(path):
                             # @TODO Make editor configurable
-                            Editor.open(path,default_editor_cmd="/usr/local/bin/atom")
+                            Editor.open(path, default_editor_cmd="/usr/local/bin/atom")
                         else:
                             Editor.open_filepath(path)
 
@@ -376,20 +440,21 @@ def main(_argv=None):
         if args.local:
             local_projects = []
             for project in projects:
-                checker = CheckOS(args=args, project=project)
+                checker = CheckOS(args=args, github=github, project=project)
                 if checker.check_local().ok:
                     # non forked owned by owner
                     if checker.check_git():
                         local_projects.append(project)
             projects = local_projects
 
-        for i,project in enumerate(projects):
-            checker = CheckOS(args=args, project=project)
+        for i, project in enumerate(projects):
+            checker = CheckOS(args=args, github=github, project=project)
             checker.check(f"{i+1:3}:")
     except Exception as ex:
         if args.debug:
             print(traceback.format_exc())
         raise ex
+
 
 if __name__ == "__main__":
     main()

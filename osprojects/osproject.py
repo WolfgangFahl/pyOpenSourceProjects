@@ -255,6 +255,20 @@ class GitHub(TicketSystem):
             )
         return []
 
+    @classmethod
+    def get_latest_workflow_run(cls, project: OsProject, access_token: str = None):
+        headers = cls.prepare_headers(access_token)
+        url = f"https://api.github.com/repos/{project.owner}/{project.id}/actions/runs"
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            runs = response.json()["workflow_runs"]
+            return runs[0] if runs else None
+        else:
+            print(
+                f"Failed to fetch workflow runs: {response.status_code} - {response.text}"
+            )
+            return None
+
     @staticmethod
     def projectUrl(project: OsProject):
         return f"https://github.com/{project.owner}/{project.id}"
