@@ -5,12 +5,13 @@ Created on 2024-07-30
 @author: wf
 """
 import argparse
+import configparser
 import os
 import tomllib
 import traceback
 from argparse import Namespace
 from dataclasses import dataclass
-from typing import List
+from typing import List,Optional
 
 from git import Repo
 from git.exc import InvalidGitRepositoryError, NoSuchPathError
@@ -20,7 +21,6 @@ from tqdm import tqdm
 # original at ngwidgets - use redundant local copy ...
 from osprojects.editor import Editor
 from osprojects.osproject import GitHub, OsProject
-
 
 @dataclass
 class Check:
@@ -43,19 +43,17 @@ class Check:
         check = Check(ok, path, msg=path, content=content)
         return check
 
-
 class CheckOS:
     """
     check the open source projects
     """
-
     def __init__(self, args: Namespace, github: GitHub, project: OsProject):
         self.github = github
         self.args = args
         self.verbose = args.verbose
         self.workspace = args.workspace
         self.project = project
-        self.project_path = os.path.join(self.workspace, project.id)
+        self.project_path = os.path.join(self.workspace, project.project_id)
         self.checks = []
         # python 3.12 is max version
         self.max_python_version_minor = 12
@@ -99,6 +97,75 @@ class CheckOS:
         path_exists = Check.file_exists(path)
         self.checks.append(path_exists)
         return path_exists
+
+    @classmethod
+    def get_project_url_from_git_config(cls, project_path: str) -> Optional[str]:
+        """
+        Get the project URL from the git config file.
+
+        Args:
+            project_path (str): The path to the project directory.
+
+        Returns:
+            Optional[str]: The project URL if found, None otherwise.
+        """
+        config_path = os.path.join(project_path, '.git', 'config')
+        if not os.path.exists(config_path):
+            return None
+
+        config = configparser.ConfigParser()
+        config.read(config_path)
+
+        if 'remote "origin"' not in config:
+            return None
+
+        return config['remote "origin"']['url']
+
+    @classmethod
+    def get_local_projects(cls, workspace: str, args: argparse.Namespace, github: GitHub, with_progress: bool = False) -> List['OsProject']:
+        """
+        Get a list of local projects from the given workspace.
+
+        Args:
+            workspace (str): The workspace directory path.
+            args (argparse.Namespace): The command-line arguments.
+            github (GitHub): The GitHub instance.
+            with_progress (bool, optional): Whether to show a progress bar. Defaults to False.
+
+        Returns:
+            List[OsProject]: A list of OsProject instances.
+        """
+        projects = []
+        all_dirs = [d for d in os.listdir(workspace) if os.path.isdir(os.path.join(workspace, d))]
+
+        if with_progress:
+            pbar = tqdm(total=len(all_dirs), desc="Local OS:")
+
+        for dir_name in all_dirs:
+            project_path = os.path.join(workspace, dir_name)
+            project_url = cls.get_project_url_from_git_config(project_path)
+
+            if project_url:
+                try:
+                    project = OsProject.fromUrl(project_url)
+                    checker = CheckOS(args=args, github=github, project=project)
+                    if checker.check_local().ok and checker.check_git():
+                        projects.append(project)
+                    if with_progress:
+                        pbar.set_description(f"Local OS: {project.owner}/{project.project_id}")
+                        pbar.update(1)
+                except Exception as e:
+                    if args.verbose or args.debug:
+                        print(f"Error processing {project_path}: {str(e)}")
+            else:
+                if with_progress:
+                    pbar.update(1)
+
+        if with_progress:
+            pbar.close()
+
+        return projects
+
 
     def check_local(self) -> Check:
         local = Check.file_exists(self.project_path)
@@ -215,7 +282,7 @@ class CheckOS:
                 "[![PyPI Status](https://img.shields.io/pypi/v/{self.project_name}.svg)](https://pypi.python.org/pypi/{self.project_name}/)",
                 "[![GitHub issues](https://img.shields.io/github/issues/{self.project.fqid}.svg)](https://github.com/{self.project.fqid}/issues)",
                 "[![GitHub closed issues](https://img.shields.io/github/issues-closed/{self.project.fqid}.svg)](https://github.com/{self.project.fqid}/issues/?q=is%3Aissue+is%3Aclosed)",
-                "[![API Docs](https://img.shields.io/badge/API-Documentation-blue)](https://{self.project.owner}.github.io/{self.project.id}/)",
+                "[![API Docs](https://img.shields.io/badge/API-Documentation-blue)](https://{self.project.owner}.github.io/{self.project.project_id}/)",
                 "[![License](https://img.shields.io/github/license/{self.project.fqid}.svg)](https://www.apache.org/licenses/LICENSE-2.0)",
             ]
             for line in badge_lines:
@@ -282,25 +349,24 @@ class CheckOS:
         owner_match = False
         is_fork = False
         try:
-            repo_info = self.github.get_project(self.project.owner, self.project.id)
-            is_fork = repo_info.forks > 0
+            is_git_repo = os.path.isdir(os.path.join(self.project_path, '.git'))
+            self.add_check(is_git_repo, "Has a git repository", self.project_path)
 
-            self.add_check(True, "Is a git repository", self.project_path)
-            self.add_check(True, "Has remote origin", self.project_path)
+            project_url = self.get_project_url_from_git_config(self.project_path)
+            has_github_origin = project_url is not None and "github.com" in project_url
+            self.add_check(has_github_origin, "Has GitHub remote origin", self.project_path)
 
-            owner_match = repo_info.owner.lower() == self.project.owner.lower()
-            self.add_check(
-                owner_match,
-                f"Git owner ({repo_info.owner}) matches project owner ({self.project.owner})",
-                self.project_path,
-            )
 
-            repo_match = repo_info.id.lower() == self.project.id.lower()
-            self.add_check(
-                repo_match,
-                f"Git repo name ({repo_info.id}) matches project id ({self.project.id})",
-                self.project_path,
-            )
+            local_owner = self.project.owner
+            remote_owner = self.project._repo['owner']['login']
+            is_fork = self.project._repo['fork']
+            owner_match = local_owner.lower() == remote_owner.lower() and not is_fork
+            self.add_check(owner_match, f"Git owner ({remote_owner}) matches project owner ({local_owner}) and is not a fork", self.project_path)
+
+            local_project_id = self.project.project_id
+            remote_repo_name = self.project._repo['name']
+            repo_match = local_project_id.lower() == remote_repo_name.lower()
+            self.add_check(repo_match, f"Git repo name ({remote_repo_name}) matches project id ({local_project_id})", self.project_path)
 
             # Check if there are uncommitted changes (this still requires local git access)
             local_repo = Repo(self.project_path)
@@ -385,7 +451,6 @@ class CheckOS:
                         else:
                             Editor.open_filepath(path)
 
-
 def main(_argv=None):
     """
     main command line entry point
@@ -404,7 +469,8 @@ def main(_argv=None):
         help="open default editor on failed files",
     )
     parser.add_argument(
-        "-o", "--owner", help="project owner or organization", required=True
+        "-o", "--owner",
+        help="project owner or organization"
     )
     parser.add_argument("-p", "--project", help="name of the project")
     parser.add_argument("-l", "--language", help="filter projects by language")
@@ -430,9 +496,13 @@ def main(_argv=None):
             projects = github.list_projects_as_os_projects(
                 args.owner, project_name=args.project
             )
-        else:
+        elif args.owner:
             # Check all projects
             projects = github.list_projects_as_os_projects(args.owner)
+        elif args.local:
+            projects = CheckOS.get_local_projects(args.workspace, args, github, with_progress=True)
+        else:
+            raise ValueError("Please provide --owner and --project, or use --local option.")
 
         if args.language:
             projects = [p for p in projects if p.language == args.language]

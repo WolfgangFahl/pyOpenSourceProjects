@@ -19,7 +19,7 @@ class TestOsProject(BaseTest):
         """
         tests if the projects details, commits and issues/tickets are correctly queried
         """
-        osProject = self.getSampleById(OsProject, "id", "pyOpenSourceProjects")
+        osProject = OsProject(owner="WolfgangFahl",project_id="pyOpenSourceProjects")
         tickets = osProject.getAllTickets()
         expectedTicket = self.getSampleById(Ticket, "number", 2)
         expectedTicket.project = osProject
@@ -36,7 +36,7 @@ class TestOsProject(BaseTest):
         """
         if self.inPublicCI():
             return
-        osProject = self.getSampleById(OsProject, "id", "pyOpenSourceProjects")
+        osProject = OsProject(owner="WolfgangFahl",project_id="pyOpenSourceProjects")
         commits = osProject.getCommits()
         expectedCommit = self.getSampleById(Commit, "hash", "106254f")
         self.assertTrue(len(commits) > 15)
@@ -99,7 +99,8 @@ class TestGitHub(BaseTest):
             expectedProject = urlCase["project"]
             for url in urlVariants:
                 giturl = f"{url}.git"
-                owner, project = GitHub.resolveProjectUrl(giturl)
+                github=GitHub()
+                owner, project = github.resolveProjectUrl(giturl)
                 self.assertEqual(expectedOwner, owner)
                 self.assertEqual(expectedProject, project)
 
@@ -113,7 +114,7 @@ class TestGitHub(BaseTest):
         # Test list_projects_as_os_projects
         projects = github.list_projects_as_os_projects(owner)
         debug = self.debug
-        debug = True
+        #debug = True
         if debug:
             for project in projects:
                 print(project)
@@ -121,7 +122,7 @@ class TestGitHub(BaseTest):
         self.assertTrue(len(projects) > 0, "No projects found for WolfgangFahl")
 
         # Check if pyOpenSourceProjects is in the list
-        pyosp_found = any(project.id == "pyOpenSourceProjects" for project in projects)
+        pyosp_found = any(project.project_id == "pyOpenSourceProjects" for project in projects)
         self.assertTrue(
             pyosp_found, "pyOpenSourceProjects not found in the list of projects"
         )
@@ -129,7 +130,7 @@ class TestGitHub(BaseTest):
         # Test a sample project's structure
         sample_project = projects[0]
         expected_attributes = {
-            "id",
+            "project_id",
             "owner",
             "title",
             "url",
@@ -154,8 +155,8 @@ class TestGitHub(BaseTest):
         # Test a sample OsProject
         sample_os_project = projects[0]
         self.assertEqual(sample_os_project.owner, owner)
-        self.assertIsInstance(sample_os_project.id, str)
-        self.assertEqual(sample_os_project.ticketSystem, GitHub)
+        self.assertIsInstance(sample_os_project.project_id, str)
+        self.assertIsInstance(sample_os_project.ticketSystem, GitHub)
 
     def testGetSpecificProject(self):
         """
@@ -169,9 +170,9 @@ class TestGitHub(BaseTest):
             0
         ]
         self.assertIsInstance(project, OsProject)
-        self.assertEqual(project.id, project_name)
+        self.assertEqual(project.project_id, project_name)
         self.assertEqual(project.owner, owner)
-        self.assertEqual(project.ticketSystem, GitHub)
+        self.assertIsInstance(project.ticketSystem, GitHub)
 
 
 class TestCommit(BaseTest):
