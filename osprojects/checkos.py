@@ -72,6 +72,14 @@ class CheckOS:
         failed_checks = [check for check in self.checks if not check.ok]
         return failed_checks
 
+    def handle_exception(self,ex:Exception,debug:bool=False):
+        if debug:
+            print(traceback.format_exc())
+
+    def add_error(self,ex,path:str):
+        self.handle_exception(ex, debug=self.args.debug)
+        self.add_check(False, msg=f"{str(ex)}", path=path)
+
     def add_check(
         self, ok, msg: str = "", path: str = None, negative: bool = False
     ) -> Check:
@@ -395,10 +403,8 @@ class CheckOS:
             self.add_check(
                 False, "Git repository path does not exist", self.project_path
             )
-        except Exception as e:
-            self.add_check(
-                False, f"Error checking git repository: {str(e)}", self.project_path
-            )
+        except Exception as ex:
+            self.add_error(ex,self.project_path)
 
         return owner_match and not is_fork
 
@@ -521,8 +527,7 @@ def main(_argv=None):
             checker = CheckOS(args=args, github=github, project=project)
             checker.check(f"{i+1:3}:")
     except Exception as ex:
-        if args.debug:
-            print(traceback.format_exc())
+        CheckOS.handle_exception(ex,debug=args.debug)
         raise ex
 
 
