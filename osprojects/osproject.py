@@ -75,13 +75,30 @@ class GitHub(TicketSystem):
         # Return None if no token file is found
         return None
 
-    def get_response(self,title:str,url:str,params={}):
-        response = requests.get(url, headers=self.headers,params=params)
-        if response.status_code != 200:
-            err_msg=f"Failed to {title} for {url}: {response.status_code} - {response.text}"
-            raise Exception(err_msg)
-        return response
+    def get_response(self, title: str, url: str, params={}, allow_redirects=True):
+        """
+        Get response from GitHub API or Google Docs API
 
+        Args:
+            title (str): Description of the request
+            url (str): URL to send the request to
+            params (dict): Query parameters for the request
+            allow_redirects (bool): Whether to follow redirects
+
+        Returns:
+            requests.Response: The response object
+        """
+        response = requests.get(url, headers=self.headers, params=params, allow_redirects=allow_redirects)
+
+        if response.status_code == 302 and not allow_redirects:
+            # Return the redirect URL if we're not following redirects
+            return response.headers['Location']
+
+        if response.status_code not in [200, 302]:
+            err_msg = f"Failed to {title} for {url}: {response.status_code} - {response.text}"
+            raise Exception(err_msg)
+
+        return response
 
     def get_repo_info(self, owner: str, project_name: str) -> dict:
         """
@@ -241,6 +258,25 @@ class GitHub(TicketSystem):
         response = self.get_response("workflow runs", url)
         runs = response.json()["workflow_runs"]
         return runs[0] if runs else None
+
+    def get_workflow_run_logs(self, owner: str, repo: str, run_id: int, job_id: int) -> str:
+        """
+        Fetch the logs for a specific job in a GitHub Actions workflow run.
+
+        Args:
+            owner (str): The owner of the repository
+            repo (str): The name of the repository
+            run_id (int): The ID of the workflow run
+            job_id (int): The ID of the job within the run
+
+        Returns:
+            str: The log content
+        """
+        url = f'https://api.github.com/repos/{owner}/{repo}/actions/jobs/{job_id}/logs'
+        log_response = self.get_response("fetch job logs", url)
+        log_content= log_response.content.decode('utf-8-sig')
+
+        return log_content
 
 
     def projectUrl(self,project: OsProject):

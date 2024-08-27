@@ -72,12 +72,14 @@ class CheckOS:
         failed_checks = [check for check in self.checks if not check.ok]
         return failed_checks
 
-    def handle_exception(self,ex:Exception,debug:bool=False):
+    @classmethod
+    def handle_exception(cls,ex:Exception,debug:bool=False):
         if debug:
+            print(f"Error: {str(ex)}")
             print(traceback.format_exc())
 
     def add_error(self,ex,path:str):
-        self.handle_exception(ex, debug=self.args.debug)
+        CheckOS.handle_exception(ex, debug=self.args.debug)
         self.add_check(False, msg=f"{str(ex)}", path=path)
 
     def add_check(
@@ -130,6 +132,33 @@ class CheckOS:
         return config['remote "origin"']['url']
 
     @classmethod
+    def get_local_project(cls, args: argparse.Namespace, github: GitHub, project_name: str) -> Optional['OsProject']:
+        """
+        Get a single local project from the workspace.
+
+        Args:
+            args (argparse.Namespace): The command-line arguments.
+            github (GitHub): The GitHub instance.
+            project_name (str): The name of the project to find.
+
+        Returns:
+            Optional[OsProject]: An OsProject instance if found, None otherwise.
+        """
+        workspace = args.workspace
+        project_path = os.path.join(workspace, project_name)
+        project_url = cls.get_project_url_from_git_config(project_path)
+
+        if project_url:
+            try:
+                project = OsProject.fromUrl(project_url)
+                checker = CheckOS(args=args, github=github, project=project)
+                if checker.check_local().ok and checker.check_git():
+                    return project
+            except Exception as ex:
+                CheckOS.handle_exception(ex)
+        return None
+
+    @classmethod
     def get_local_projects(cls, workspace: str, args: argparse.Namespace, github: GitHub, with_progress: bool = False) -> List['OsProject']:
         """
         Get a list of local projects from the given workspace.
@@ -150,30 +179,17 @@ class CheckOS:
             pbar = tqdm(total=len(all_dirs), desc="Local OS:")
 
         for dir_name in all_dirs:
-            project_path = os.path.join(workspace, dir_name)
-            project_url = cls.get_project_url_from_git_config(project_path)
-
-            if project_url:
-                try:
-                    project = OsProject.fromUrl(project_url)
-                    checker = CheckOS(args=args, github=github, project=project)
-                    if checker.check_local().ok and checker.check_git():
-                        projects.append(project)
-                    if with_progress:
-                        pbar.set_description(f"Local OS: {project.owner}/{project.project_id}")
-                        pbar.update(1)
-                except Exception as e:
-                    if args.verbose or args.debug:
-                        print(f"Error processing {project_path}: {str(e)}")
-            else:
-                if with_progress:
-                    pbar.update(1)
+            project = cls.get_local_project(args, github, dir_name)
+            if project:
+                projects.append(project)
+            if with_progress:
+                pbar.set_description(f"Local OS: {project.owner}/{project.project_id}" if project else "Local OS:")
+                pbar.update(1)
 
         if with_progress:
             pbar.close()
 
         return projects
-
 
     def check_local(self) -> Check:
         local = Check.file_exists(self.project_path)
@@ -499,9 +515,15 @@ def main(_argv=None):
         github = GitHub()
         if args.project:
             # Check specific project
-            projects = github.list_projects_as_os_projects(
-                args.owner, project_name=args.project
-            )
+            if args.owner:
+                projects = github.list_projects_as_os_projects(
+                    args.owner, project_name=args.project
+                )
+            elif args.local:
+                project = CheckOS.get_local_project(args, github, args.project)
+                projects = [project] if project else []
+            else:
+                raise ValueError("--local or --owner needed with --project")
         elif args.owner:
             # Check all projects
             projects = github.list_projects_as_os_projects(args.owner)
