@@ -335,54 +335,45 @@ FAILED (errors=8))
         """
         Test the workflow run analysis functionality with multiple cases.
         """
-        test_cases = {
-            "single_failure": {
-                "owner": "WolfgangFahl",
-                "repo": "pyOnlineSpreadSheetEditing",
-                "run_id": 10571934380,
-                "job_id": 29288830929,
-                "expected_status": "failed",
-                "expected_failures": 1,
-            },
-            "success": {
-                "owner": "WolfgangFahl",
-                "repo": "py-sidif",
-                "run_id": 10228791653,
-                "job_id": 28301694479,
-                "expected_status": "succeeded",
-                "expected_failures": 0,
-            },
-            "multiple_failures": {
-                "owner": "WolfgangFahl",
-                "repo": "scan2wiki",
-                "run_id": 10557241724,
-                "job_id": 29244366904,
-                "expected_status": "failed",
-                "expected_failures": 3,  # Adjust this number based on actual failures
-            },
-        }
+        test_cases = [
+            (
+                "single_failure",
+                "https://github.com/WolfgangFahl/pyOnlineSpreadSheetEditing/actions/runs/10571934380/job/29288830929",
+                "failed",
+                1
+            ),
+            (
+                "success",
+                "https://github.com/WolfgangFahl/py-sidif/actions/runs/10228791653/job/28301694479",
+                "succeeded",
+                0
+            ),
+            (
+                "multiple_failures",
+                "https://github.com/WolfgangFahl/scan2wiki/actions/runs/10557241724/job/29244366904",
+                "failed",
+                3  # Adjust this number based on actual failures
+            ),
+            (
+                "authorization",
+                "https://github.com/WolfgangFahl/pyOpenSourceProjects/actions/runs/10573294825/job/29292512092",
+                "failed",
+                6  # Expecting 6 failures
+            )
+        ]
 
         github = ExtendedGitHub()
 
-        for case_name, case_data in test_cases.items():
+        for case_name, url, expected_status, expected_failures in test_cases:
             with self.subTest(case=case_name):
-                analysis = github.analyze_workflow_run(
-                    case_data["owner"],
-                    case_data["repo"],
-                    case_data["run_id"],
-                    case_data["job_id"],
-                )
+                analysis = github.analyze_workflow_run(url, save_log=True)
 
                 self.assertIsInstance(analysis, WorkflowRunAnalysis)
-                self.assertEqual(analysis.build_status, case_data["expected_status"])
+                self.assertEqual(analysis.build_status, expected_status)
                 self.assertIsInstance(analysis.failed_tests, list)
-                self.assertEqual(
-                    len(analysis.failed_tests), case_data["expected_failures"]
-                )
+                self.assertEqual(len(analysis.failed_tests), expected_failures)
                 self.assertIsInstance(analysis.test_summary, TestSummary)
-                self.assertEqual(
-                    analysis.test_summary.num_failures, case_data["expected_failures"]
-                )
+                self.assertEqual(analysis.test_summary.num_failures, expected_failures)
 
                 print(f"\nAnalysis for {case_name}:")
                 analysis.show()
@@ -391,6 +382,4 @@ FAILED (errors=8))
                     print("\nDetailed Analysis:")
                     print(f"Number of failed tests: {len(analysis.failed_tests)}")
                     for test in analysis.failed_tests:
-                        print(
-                            f"Test: {test.name}, File: {test.file}, Line: {test.line}"
-                        )
+                        print(f"Test: {test.name}, File: {test.file}, Line: {test.line}")
