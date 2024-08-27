@@ -19,7 +19,7 @@ class TestOsProject(BaseTest):
         """
         tests if the projects details, commits and issues/tickets are correctly queried
         """
-        osProject = OsProject(owner="WolfgangFahl",project_id="pyOpenSourceProjects")
+        osProject = OsProject(owner="WolfgangFahl", project_id="pyOpenSourceProjects")
         tickets = osProject.getAllTickets()
         expectedTicket = self.getSampleById(Ticket, "number", 2)
         expectedTicket.project = osProject
@@ -36,7 +36,7 @@ class TestOsProject(BaseTest):
         """
         if self.inPublicCI():
             return
-        osProject = OsProject(owner="WolfgangFahl",project_id="pyOpenSourceProjects")
+        osProject = OsProject(owner="WolfgangFahl", project_id="pyOpenSourceProjects")
         commits = osProject.getCommits()
         expectedCommit = self.getSampleById(Commit, "hash", "106254f")
         self.assertTrue(len(commits) > 15)
@@ -66,7 +66,6 @@ class TestOsProject(BaseTest):
         output = self.captureOutput(gitlog2wiki)
         outputLines = output.split("\n")
         self.assertTrue(expectedCommitMarkup in outputLines)
-
 
 
 class TestCommit(BaseTest):

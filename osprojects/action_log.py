@@ -1,15 +1,19 @@
-'''
+"""
 Created on 27.08.2024
 
 action_log module
 
 @author: wf
-'''
-from osprojects.osproject import GitHub
+"""
+
+import re
 from dataclasses import dataclass
 from typing import List, Optional
-import re
+
 import requests
+
+from osprojects.osproject import GitHub
+
 
 @dataclass
 class FailedTest:
@@ -22,6 +26,7 @@ class FailedTest:
         file (str): The file where the test failure occurred. Empty string if unknown.
         line (int): The line number where the test failure occurred. 0 if unknown.
     """
+
     name: str
     error: str
     file: str = ""
@@ -37,6 +42,7 @@ class FailedTest:
             print(f"Location: {self.file}:{self.line}")
         print()
 
+
 @dataclass
 class TestSummary:
     """
@@ -47,6 +53,7 @@ class TestSummary:
         time_taken (float): The time taken to run all tests, in seconds.
         num_failures (int): The number of tests that failed.
     """
+
     total_tests: int
     time_taken: float
     num_failures: int
@@ -60,6 +67,7 @@ class TestSummary:
         print(f"Time taken: {self.time_taken:.2f}s")
         print(f"Number of failures: {self.num_failures}")
 
+
 @dataclass
 class WorkflowRunAnalysis:
     """
@@ -70,6 +78,7 @@ class WorkflowRunAnalysis:
         failed_tests (List[FailedTest]): A list of FailedTest objects for any failed tests.
         test_summary (TestSummary): A TestSummary object summarizing the test run.
     """
+
     build_status: str
     failed_tests: List[FailedTest]
     test_summary: TestSummary
@@ -85,12 +94,15 @@ class WorkflowRunAnalysis:
                 test.show()
         self.test_summary.show()
 
+
 class ExtendedGitHub(GitHub):
     """
     Extended GitHub class with additional functionality for workflow analysis.
     """
 
-    def get_workflow_run_logs(self, owner: str, repo: str, run_id: int, job_id: int) -> str:
+    def get_workflow_run_logs(
+        self, owner: str, repo: str, run_id: int, job_id: int
+    ) -> str:
         """
         Fetch the logs for a specific job in a GitHub Actions workflow run.
 
@@ -103,11 +115,11 @@ class ExtendedGitHub(GitHub):
         Returns:
             str: The log content.
         """
-        url = f'https://api.github.com/repos/{owner}/{repo}/actions/jobs/{job_id}/logs'
+        url = f"https://api.github.com/repos/{owner}/{repo}/actions/jobs/{job_id}/logs"
         log_url = self.get_response("fetch job logs", url, allow_redirects=False)
 
         log_response = requests.get(log_url)
-        return log_response.content.decode('utf-8-sig')
+        return log_response.content.decode("utf-8-sig")
 
     def extract_test_blocks(self, logs: str) -> List[str]:
         """
@@ -120,7 +132,7 @@ class ExtendedGitHub(GitHub):
             List[str]: A list of individual test result blocks.
         """
         # This pattern looks for blocks starting with "======" or "FAIL:" and ending with a blank line or end of string
-        blocks = re.findall(r'((?:======|FAIL:).*?(?:\n\n|\Z))', logs, re.DOTALL)
+        blocks = re.findall(r"((?:======|FAIL:).*?(?:\n\n|\Z))", logs, re.DOTALL)
         return blocks
 
     def parse_test_block(self, block: str) -> Optional[FailedTest]:
@@ -134,13 +146,19 @@ class ExtendedGitHub(GitHub):
             Optional[FailedTest]: A FailedTest object if the test failed, None otherwise.
         """
         if "ERROR:" in block or "FAIL:" in block:
-            test_name_match = re.search(r'(ERROR|FAIL): (.+?)(\s\(|$)', block)
-            error_message_match = re.search(r'(AssertionError|Error|ImportError): (.+?)$', block, re.MULTILINE)
+            test_name_match = re.search(r"(ERROR|FAIL): (.+?)(\s\(|$)", block)
+            error_message_match = re.search(
+                r"(AssertionError|Error|ImportError): (.+?)$", block, re.MULTILINE
+            )
             file_info_match = re.search(r'File "(.+?)", line (\d+)', block)
 
             if test_name_match:
                 name = test_name_match.group(2)
-                error = error_message_match.group(2) if error_message_match else "Unknown error"
+                error = (
+                    error_message_match.group(2)
+                    if error_message_match
+                    else "Unknown error"
+                )
                 file = file_info_match.group(1) if file_info_match else ""
                 line = int(file_info_match.group(2)) if file_info_match else 0
 
@@ -158,11 +176,15 @@ class ExtendedGitHub(GitHub):
             WorkflowRunAnalysis: Structured analysis of the workflow run.
         """
         blocks = self.extract_test_blocks(logs)
-        failed_tests = [test for block in blocks if (test := self.parse_test_block(block))]
+        failed_tests = [
+            test for block in blocks if (test := self.parse_test_block(block))
+        ]
 
         build_status = "failed" if failed_tests else "succeeded"
 
-        test_summary_match = re.search(r'Ran (\d+) tests? in (\d+\.\d+)s\n\n(OK|FAILED.*)', logs)
+        test_summary_match = re.search(
+            r"Ran (\d+) tests? in (\d+\.\d+)s\n\n(OK|FAILED.*)", logs
+        )
         if test_summary_match:
             total_tests = int(test_summary_match.group(1))
             time_taken = float(test_summary_match.group(2))
@@ -173,8 +195,9 @@ class ExtendedGitHub(GitHub):
 
         return WorkflowRunAnalysis(build_status, failed_tests, test_summary)
 
-
-    def analyze_workflow_run(self, owner: str, repo: str, run_id: int, job_id: int) -> WorkflowRunAnalysis:
+    def analyze_workflow_run(
+        self, owner: str, repo: str, run_id: int, job_id: int
+    ) -> WorkflowRunAnalysis:
         """
         Analyze a GitHub Actions workflow run.
 

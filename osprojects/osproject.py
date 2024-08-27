@@ -3,7 +3,9 @@ Created on 2022-01-24
 
 @author: wf
 """
+
 from __future__ import annotations
+
 import argparse
 import datetime
 import json
@@ -12,7 +14,6 @@ import re
 import subprocess
 import sys
 from typing import List, Optional
-
 
 import requests
 from dateutil.parser import parse
@@ -29,19 +30,19 @@ class TicketSystem(object):
         """
         return NotImplemented
 
-    def projectUrl(self,project: OsProject):
+    def projectUrl(self, project: OsProject):
         """
         url of the project
         """
         return NotImplemented
 
-    def ticketUrl(self,project: OsProject):
+    def ticketUrl(self, project: OsProject):
         """
         url of the ticket/issue list
         """
         return NotImplemented
 
-    def commitUrl(self,project: OsProject, commit_id: str):
+    def commitUrl(self, project: OsProject, commit_id: str):
         """
         url of the ticket/issue list
         """
@@ -54,8 +55,10 @@ class GitHub(TicketSystem):
     """
 
     def __init__(self):
-        self.access_token=self.load_access_token()
-        self.headers = {"Authorization": f"token {self.access_token}"} if self.access_token else {}
+        self.access_token = self.load_access_token()
+        self.headers = (
+            {"Authorization": f"token {self.access_token}"} if self.access_token else {}
+        )
 
     def load_access_token(self) -> str:
         """
@@ -88,14 +91,18 @@ class GitHub(TicketSystem):
         Returns:
             requests.Response: The response object
         """
-        response = requests.get(url, headers=self.headers, params=params, allow_redirects=allow_redirects)
+        response = requests.get(
+            url, headers=self.headers, params=params, allow_redirects=allow_redirects
+        )
 
         if response.status_code == 302 and not allow_redirects:
             # Return the redirect URL if we're not following redirects
-            return response.headers['Location']
+            return response.headers["Location"]
 
         if response.status_code not in [200, 302]:
-            err_msg = f"Failed to {title} for {url}: {response.status_code} - {response.text}"
+            err_msg = (
+                f"Failed to {title} for {url}: {response.status_code} - {response.text}"
+            )
             raise Exception(err_msg)
 
         return response
@@ -115,11 +122,8 @@ class GitHub(TicketSystem):
         response = self.get_response("fetch repository", url)
         return response.json()
 
-
     def list_projects_as_os_projects(
-        self,
-        owner: str,
-        project_name: Optional[str] = None
+        self, owner: str, project_name: Optional[str] = None
     ) -> List[OsProject]:
         """
         List all public repositories for a given owner and return them as OsProject instances.
@@ -144,7 +148,7 @@ class GitHub(TicketSystem):
 
             while True:
                 params["page"] = page
-                response=self.get_response("fetch repositories",url,params)
+                response = self.get_response("fetch repositories", url, params)
                 response = requests.get(url, headers=self.headers, params=params)
                 repos = response.json()
                 if not repos:
@@ -157,19 +161,12 @@ class GitHub(TicketSystem):
 
         return [
             OsProject(
-                owner=owner,
-                project_id=repo["name"],
-                ticketSystem=self,
-                repo=repo
+                owner=owner, project_id=repo["name"], ticketSystem=self, repo=repo
             )
             for repo in repos
         ]
 
-    def get_project(
-        self,
-        owner: str,
-        project_id: str
-    ) -> OsProject:
+    def get_project(self, owner: str, project_id: str) -> OsProject:
         """
         Get a specific project as an OsProject instance.
 
@@ -181,16 +178,13 @@ class GitHub(TicketSystem):
         Returns:
             OsProject: An OsProject instance representing the repository.
         """
-        projects = self.list_projects_as_os_projects(
-            owner, project_name=project_id
-        )
+        projects = self.list_projects_as_os_projects(owner, project_name=project_id)
         if projects:
             return projects[0]
         raise Exception(f"Project {owner}/{project_id} not found")
 
     def getIssues(
-        self,
-        project: OsProject,limit: int = None, **params
+        self, project: OsProject, limit: int = None, **params
     ) -> List[Ticket]:
         payload = {}
         issues = []
@@ -241,16 +235,12 @@ class GitHub(TicketSystem):
                 params["page"] += 1
         return issues
 
-    def getComments(
-        self,
-        project: OsProject,
-        issue_number: int
-    ) -> List[dict]:
+    def getComments(self, project: OsProject, issue_number: int) -> List[dict]:
         """
         Fetch all comments for a specific issue number from GitHub.
         """
         comments_url = GitHub.commentUrl(project, issue_number)
-        response = self.get_response("fetch comments",comments_url)
+        response = self.get_response("fetch comments", comments_url)
         return response.json()
 
     def get_latest_workflow_run(self, project: OsProject):
@@ -259,7 +249,9 @@ class GitHub(TicketSystem):
         runs = response.json()["workflow_runs"]
         return runs[0] if runs else None
 
-    def get_workflow_run_logs(self, owner: str, repo: str, run_id: int, job_id: int) -> str:
+    def get_workflow_run_logs(
+        self, owner: str, repo: str, run_id: int, job_id: int
+    ) -> str:
         """
         Fetch the logs for a specific job in a GitHub Actions workflow run.
 
@@ -272,30 +264,30 @@ class GitHub(TicketSystem):
         Returns:
             str: The log content
         """
-        url = f'https://api.github.com/repos/{owner}/{repo}/actions/jobs/{job_id}/logs'
+        url = f"https://api.github.com/repos/{owner}/{repo}/actions/jobs/{job_id}/logs"
         log_response = self.get_response("fetch job logs", url)
-        log_content= log_response.content.decode('utf-8-sig')
+        log_content = log_response.content.decode("utf-8-sig")
 
         return log_content
 
-
-    def projectUrl(self,project: OsProject):
+    def projectUrl(self, project: OsProject):
         return f"https://github.com/{project.owner}/{project.project_id}"
 
-    def ticketUrl(self,project: OsProject):
-        return f"https://api.github.com/repos/{project.owner}/{project.project_id}/issues"
+    def ticketUrl(self, project: OsProject):
+        return (
+            f"https://api.github.com/repos/{project.owner}/{project.project_id}/issues"
+        )
 
-
-    def commitUrl(self,project: OsProject, commit_id: str):
+    def commitUrl(self, project: OsProject, commit_id: str):
         return f"{self.projectUrl(project)}/commit/{commit_id}"
 
-    def commentUrl(self,project: OsProject, issue_number: int):
+    def commentUrl(self, project: OsProject, issue_number: int):
         """
         Construct the URL for accessing comments of a specific issue.
         """
         return f"https://api.github.com/repos/{project.owner}/{project.project_id}/issues/{issue_number}/comments"
 
-    def resolveProjectUrl(self,url: str) -> (str, str):
+    def resolveProjectUrl(self, url: str) -> (str, str):
         """
         Resolve project url to owner and project name
 
@@ -322,7 +314,13 @@ class OsProject(object):
     an Open Source Project
     """
 
-    def __init__(self, owner: str, project_id:str, ticketSystem:TicketSystem=None, repo: dict=None):
+    def __init__(
+        self,
+        owner: str,
+        project_id: str,
+        ticketSystem: TicketSystem = None,
+        repo: dict = None,
+    ):
         self.owner = owner
         self.project_id = project_id
         self._repo = repo or {}
@@ -334,7 +332,10 @@ class OsProject(object):
 
     @property
     def url(self):
-        return self._repo.get("html_url") or f"https://github.com/{self.owner}/{self.project_id}"
+        return (
+            self._repo.get("html_url")
+            or f"https://github.com/{self.owner}/{self.project_id}"
+        )
 
     @property
     def description(self):
@@ -347,12 +348,20 @@ class OsProject(object):
     @property
     def created_at(self):
         created_at = self._repo.get("created_at")
-        return datetime.datetime.fromisoformat(created_at.rstrip("Z")) if created_at else None
+        return (
+            datetime.datetime.fromisoformat(created_at.rstrip("Z"))
+            if created_at
+            else None
+        )
 
     @property
     def updated_at(self):
         updated_at = self._repo.get("updated_at")
-        return datetime.datetime.fromisoformat(updated_at.rstrip("Z")) if updated_at else None
+        return (
+            datetime.datetime.fromisoformat(updated_at.rstrip("Z"))
+            if updated_at
+            else None
+        )
 
     @property
     def stars(self):
@@ -365,7 +374,6 @@ class OsProject(object):
     @property
     def fqid(self):
         return f"{self.owner}/{self.project_id}"
-
 
     def __str__(self):
         return self.fqid
@@ -582,9 +590,7 @@ def main(_argv=None):
         ticketSystem = Jira()
     if args.project and args.owner:
         osProject = OsProject(
-            owner=args.owner,
-            project_id=args.project,
-            ticketSystem=ticketSystem
+            owner=args.owner, project_id=args.project, ticketSystem=ticketSystem
         )
     else:
         osProject = OsProject.fromRepo()
