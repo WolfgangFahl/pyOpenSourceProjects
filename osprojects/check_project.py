@@ -10,7 +10,7 @@ import tomllib
 from git import Repo
 from git.exc import InvalidGitRepositoryError, NoSuchPathError
 from packaging import version
-
+from osprojects.action_log import GitHubAction
 # original at ngwidgets - use redundant local copy ...
 from osprojects.editor import Editor
 
@@ -302,7 +302,7 @@ class CheckProject:
             )
 
             # Check latest GitHub Actions workflow run
-            latest_run = self.github.get_latest_workflow_run(self.project)
+            latest_run = GitHubAction.get_latest_workflow_run(self.project)
             if latest_run:
                 self.add_check(
                     latest_run["conclusion"] == "success",

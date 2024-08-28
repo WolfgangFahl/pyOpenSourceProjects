@@ -311,6 +311,25 @@ class GitHubAction:
         except (IndexError, ValueError) as e:
             raise ValueError(f"Failed to parse GitHub Actions URL: {e}")
 
+    @classmethod
+    def get_latest_workflow_run(cls, project):
+        """
+        Get the latest GitHub Actions workflow run for a given project.
+
+        Args:
+            project (OsProject): The project to check for the latest workflow run.
+
+        Returns:
+            dict: Information about the latest workflow run, or None if not found.
+        """
+        url = f"https://api.github.com/repos/{project.owner}/{project.project_id}/actions/runs"
+        response = project.repo.github.get_response("fetch latest workflow run", url)
+        runs = response.json().get("workflow_runs", [])
+        run=None
+        if runs:
+            run=runs[0]  # Return the latest run
+        return run
+
     def fetch_logs(self):
         """
         Fetch the logs for this GitHub Action.
