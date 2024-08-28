@@ -12,8 +12,9 @@ import logging
 import os
 import subprocess
 import sys
-from typing import Dict, List, Optional
+from typing import Dict, Iterable, List, Optional, Set, Tuple
 
+from tqdm import tqdm
 from dateutil.parser import parse
 
 from osprojects.github_api import GitHubApi, GitHubRepo
@@ -110,15 +111,15 @@ class OsProjects:
         self.projects = {}
         self.projects_by_url = {}
         self.local_projects = {}
-        self.selected_projects = []
+        self.selected_projects = {}
         self.owners = []
         self.github = GitHubApi.get_instance()
 
     def clear_selection(self):
         self.selected_projects = {}
 
-    def add_selection(self,project):
-        self.selected_projects[project.projectUrl()]=project
+    def add_selection(self, project):
+        self.selected_projects[project.projectUrl()] = project
 
     def select_projects(self, owner=None, project_id=None, local_only=False):
         """
@@ -143,7 +144,9 @@ class OsProjects:
                     if project.project_id == project_id:
                         self.add_selection(project)
             else:
-                raise ValueError("Owner or local_only flag must be specified with project_id")
+                raise ValueError(
+                    "Owner or local_only flag must be specified with project_id"
+                )
 
             project = self.projects_by_url.get(key)
             if project:
@@ -153,7 +156,7 @@ class OsProjects:
                 for project in self.projects[owner]:
                     self.add_selection(project)
         elif local_only:
-            for project in  self.local_projects.values():
+            for project in self.local_projects.values():
                 self.add_selection(project)
         else:
             for project in self.projects_by_url.values():
@@ -162,17 +165,32 @@ class OsProjects:
         return self.selected_projects
 
     def filter_projects(self, language=None, local_only=False):
-        filtered_projects = self.selected_projects.copy()
+        """
+        Filter the selected projects based on language and locality.
 
-        if language:
-            filtered_projects = [p for p in filtered_projects if p.language == language]
+        Args:
+            language (str, optional): The programming language to filter by.
+            local_only (bool, optional): If True, only return local projects.
 
-        if local_only:
-            filtered_projects = [p for p in filtered_projects if p.folder]
+        Returns:
+            Dict[str, OsProject]: The filtered projects.
+        """
+        filtered_projects = {}
+
+        for url, project in self.selected_projects.items():
+            include_project = True
+
+            if language and project.language != language:
+                include_project = False
+
+            if local_only and not project.folder:
+                include_project = False
+
+            if include_project:
+                filtered_projects[url] = project
 
         self.selected_projects = filtered_projects
         return self.selected_projects
-
 
     def add_projects_of_owner(self, owner: str, cache_expiry: int = 300):
         """
@@ -219,35 +237,78 @@ class OsProjects:
         if 'remote "origin"' not in config:
             return None
 
-        url= config['remote "origin"']["url"]
+        url = config['remote "origin"']["url"]
         # remove trailing / if any
-        url = url.rstrip('/')
+        url = url.rstrip("/")
         return url
 
     @classmethod
-    def from_folder(cls, folder_path: str):
+    def from_folder(cls, folder_path: str, with_progress: bool = False) -> "OsProjects":
         """
-        collect all github projects from the given folders
+        Collect all github projects from the given folders.
+
+        Args:
+            folder_path (str): The path to the folder containing projects.
+            with_progress (bool): Whether to display a progress bar. Defaults to True.
+
+        Returns:
+            OsProjects: An instance of OsProjects with collected projects.
         """
         osp = cls()
+        owners, repos_by_folder = cls.github_repos_of_folder(folder_path)
+
+        def process_owners(owners_iterable: Iterable[str]):
+            for owner in owners_iterable:
+                osp.add_projects_of_owner(owner)
+
+        if with_progress:
+            process_owners(tqdm(owners, desc="Processing owners"))
+        else:
+            process_owners(owners)
+
+        for folder, repo in repos_by_folder.items():
+            project_url = repo.projectUrl()
+            if project_url not in osp.projects_by_url:
+                logging.warning(f"{project_url} not found in projects_by_url")
+            else:
+                local_project = osp.projects_by_url[project_url]
+                local_project.folder = folder
+                osp.local_projects[project_url] = local_project
+
+        return osp
+
+    @classmethod
+    def github_repos_of_folder(
+        cls, folder_path: str
+    ) -> Tuple[Set[str], Dict[str, GitHubRepo]]:
+        """
+        Collect GitHub repositories from a given folder.
+
+        Args:
+            folder_path (str): The path to the folder to search for repositories.
+
+        Returns:
+            Tuple[Set[str], Dict[str, GitHubRepo]]: A tuple containing a set of owners
+            and a dictionary of repositories keyed by folder path.
+        """
         all_folders = []
+        repos_by_folder: Dict[str, GitHubRepo] = {}
+        owners: Set[str] = set()
+
         for d in os.listdir(folder_path):
-            sub_folder=os.path.join(folder_path, d)
+            sub_folder = os.path.join(folder_path, d)
             if os.path.isdir(sub_folder):
                 all_folders.append(sub_folder)
+
         for folder in all_folders:
             project_url = cls.get_project_url_from_git_config(folder)
             if project_url:
                 github_repo = GitHubRepo.from_url(project_url)
                 if github_repo:
-                    osp.add_projects_of_owner(github_repo.owner)
-                    if not project_url in  osp.projects_by_url:
-                        logging.warn(f"{project_url} not found in projects_by_url")
-                    else:
-                        local_project = osp.projects_by_url[project_url]
-                        local_project.folder = folder
-                        osp.local_projects[project_url] = local_project
-        return osp
+                    repos_by_folder[folder] = github_repo
+                    owners.add(github_repo.owner)
+
+        return owners, repos_by_folder
 
 
 class OsProject:
@@ -344,7 +405,7 @@ class OsProject:
         return response.json()
 
     def projectUrl(self):
-        return f"https://github.com/{self.repo.owner}/{self.repo.project_id}"
+        return self.repo.projectUrl()
 
     def commitUrl(self, commit_id: str):
         return f"{self.projectUrl()}/commit/{commit_id}"

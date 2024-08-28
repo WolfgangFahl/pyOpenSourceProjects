@@ -212,12 +212,12 @@ class GitHubRepo:
         # https://www.rfc-editor.org/rfc/rfc3986#appendix-B
         pattern = r"((https?:\/\/github\.com\/)|(git@github\.com:))(?P<owner>[^/?#]+)\/(?P<project_id>[^\./?#]+)(\.git)?"
         match = re.match(pattern=pattern, string=url)
-        repo=None
+        repo = None
         if match:
             owner = match.group("owner")
             project_id = match.group("project_id")
             if owner and project_id:
-                repo=cls(owner=owner, project_id=project_id)
+                repo = cls(owner=owner, project_id=project_id)
             else:
                 pass
         else:
@@ -226,6 +226,9 @@ class GitHubRepo:
 
     def ticketUrl(self):
         return f"{self.github.api_url}/repos/{self.owner}/{self.project_id}/issues"
+
+    def projectUrl(self):
+        return f"https://github.com/{self.owner}/{self.project_id}"
 
     def getIssueRecords(self, limit: int = None, **params) -> List[Dict]:
         all_issues_records = []

@@ -4,9 +4,14 @@ Created on 27.08.2024
 @author: wf
 """
 
-import unittest
 import os
-from osprojects.action_log import TestSummary, WorkflowRunAnalysis, GitHubWorkflowAnalyzer
+import unittest
+
+from osprojects.action_log import (
+    GitHubWorkflowAnalyzer,
+    TestSummary,
+    WorkflowRunAnalysis,
+)
 from osprojects.osproject import GitHubRepo, OsProject, OsProjects
 from tests.basetest import BaseTest
 
@@ -108,15 +113,15 @@ class TestGitHub(BaseTest):
         """
         test projects from a specific folder
         """
-        debug=self.debug
-        #debug=True
+        debug = self.debug
+        # debug=True
         home_dir = os.path.expanduser("~")
-        folder_path=os.path.join(home_dir,"py-workspace")
-        osprojects=OsProjects.from_folder(folder_path)
-        count=len(osprojects.local_projects)
+        folder_path = os.path.join(home_dir, "py-workspace")
+        osprojects = OsProjects.from_folder(folder_path)
+        count = len(osprojects.local_projects)
         if debug:
             print(f"found {count} local projects")
-        self.assertTrue(count>30)
+        self.assertTrue(count > 30)
         pass
 
     def test_log_analysis(self):
@@ -296,7 +301,7 @@ FAILED (errors=8))
             },
         ]
 
-        gwa=GitHubWorkflowAnalyzer()
+        gwa = GitHubWorkflowAnalyzer()
         for test_case in logs:
             with self.subTest(url=test_case["url"]):
                 analysis = gwa.extract_log_info(test_case["log"])
@@ -361,7 +366,7 @@ FAILED (errors=8))
             ),
         ]
 
-        gwa=GitHubWorkflowAnalyzer()
+        gwa = GitHubWorkflowAnalyzer()
 
         for case_name, url, expected_status, expected_failures in test_cases:
             with self.subTest(case=case_name):
