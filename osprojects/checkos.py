@@ -5,7 +5,6 @@ Created on 2024-07-30
 @author: wf
 """
 import argparse
-import configparser
 import os
 import tomllib
 import traceback
@@ -20,7 +19,7 @@ from tqdm import tqdm
 
 # original at ngwidgets - use redundant local copy ...
 from osprojects.editor import Editor
-from osprojects.osproject import GitHub, OsProject
+from osprojects.osproject import OsProject, OsProjects
 
 
 @dataclass
@@ -47,19 +46,59 @@ class Check:
 
 class CheckOS:
     """
-    check the open source projects
+    checker for a set of open source projects
     """
 
-    def __init__(self, args: Namespace, github: GitHub, project: OsProject):
-        self.github = github
+    def __init__(self,
+        args: Namespace,
+        osprojects: OsProjects,
+        max_python_version_minor =12):
         self.args = args
         self.verbose = args.verbose
         self.workspace = args.workspace
-        self.project = project
-        self.project_path = os.path.join(self.workspace, project.project_id)
+        self.osprojects=osprojects
         self.checks = []
         # python 3.12 is max version
-        self.max_python_version_minor = 12
+        self.max_python_version_minor = max_python_version_minor
+
+    @classmethod
+    def from_args(self,args:Namespace):
+        osprojects = OsProjects.from_folder(args.workspace)
+        return cls(args, osprojects)
+
+    def select_projects(self):
+        try:
+            if self.args.project:
+                if self.args.owner:
+                    return self.osprojects.select_projects(owner=self.args.owner, project_id=self.args.project)
+                elif self.args.local:
+                    return self.osprojects.select_projects(project_id=self.args.project, local_only=True)
+                else:
+                    raise ValueError("--local or --owner needed with --project")
+            elif self.args.owner:
+                return self.osprojects.select_projects(owner=self.args.owner)
+            elif self.args.local:
+                return self.osprojects.select_projects(local_only=True)
+            else:
+                raise ValueError("Please provide --owner and --project, or use --local option.")
+        except ValueError as e:
+            print(f"Error: {str(e)}")
+            return []
+
+    def filter_projects(self):
+        if self.args.language:
+            self.osprojects.filter_projects(language=self.args.language)
+        if self.args.local:
+            self.osprojects.filter_projects(local_only=True)
+
+    def check_projects(self):
+        self.select_projects()
+        self.filter_projects()
+
+        for i, project in enumerate(self.osprojects.selected_projects, 1):
+            self.project = project
+            self.project_path = project.folder
+            self.check(f"{i:3}:")
 
     @property
     def total(self) -> int:
@@ -110,105 +149,6 @@ class CheckOS:
         path_exists = Check.file_exists(path)
         self.checks.append(path_exists)
         return path_exists
-
-    @classmethod
-    def get_project_url_from_git_config(cls, project_path: str) -> Optional[str]:
-        """
-        Get the project URL from the git config file.
-
-        Args:
-            project_path (str): The path to the project directory.
-
-        Returns:
-            Optional[str]: The project URL if found, None otherwise.
-        """
-        config_path = os.path.join(project_path, ".git", "config")
-        if not os.path.exists(config_path):
-            return None
-
-        config = configparser.ConfigParser()
-        config.read(config_path)
-
-        if 'remote "origin"' not in config:
-            return None
-
-        return config['remote "origin"']["url"]
-
-    @classmethod
-    def get_local_project(
-        cls, args: argparse.Namespace, github: GitHub, project_name: str
-    ) -> Optional["OsProject"]:
-        """
-        Get a single local project from the workspace.
-
-        Args:
-            args (argparse.Namespace): The command-line arguments.
-            github (GitHub): The GitHub instance.
-            project_name (str): The name of the project to find.
-
-        Returns:
-            Optional[OsProject]: An OsProject instance if found, None otherwise.
-        """
-        workspace = args.workspace
-        project_path = os.path.join(workspace, project_name)
-        project_url = cls.get_project_url_from_git_config(project_path)
-
-        if project_url:
-            try:
-                project = OsProject.fromUrl(project_url)
-                checker = CheckOS(args=args, github=github, project=project)
-                if checker.check_local().ok and checker.check_git():
-                    return project
-            except Exception as ex:
-                CheckOS.handle_exception(ex)
-        return None
-
-    @classmethod
-    def get_local_projects(
-        cls,
-        workspace: str,
-        args: argparse.Namespace,
-        github: GitHub,
-        with_progress: bool = False,
-    ) -> List["OsProject"]:
-        """
-        Get a list of local projects from the given workspace.
-
-        Args:
-            workspace (str): The workspace directory path.
-            args (argparse.Namespace): The command-line arguments.
-            github (GitHub): The GitHub instance.
-            with_progress (bool, optional): Whether to show a progress bar. Defaults to False.
-
-        Returns:
-            List[OsProject]: A list of OsProject instances.
-        """
-        projects = []
-        all_dirs = [
-            d
-            for d in os.listdir(workspace)
-            if os.path.isdir(os.path.join(workspace, d))
-        ]
-
-        if with_progress:
-            pbar = tqdm(total=len(all_dirs), desc="Local OS:")
-
-        for dir_name in all_dirs:
-            project = cls.get_local_project(args, github, dir_name)
-            if project:
-                projects.append(project)
-            if with_progress:
-                pbar.set_description(
-                    f"Local OS: {project.owner}/{project.project_id}"
-                    if project
-                    else "Local OS:"
-                )
-                pbar.update(1)
-
-        if with_progress:
-            pbar.close()
-
-        return projects
 
     def check_local(self) -> Check:
         local = Check.file_exists(self.project_path)
@@ -538,50 +478,11 @@ def main(_argv=None):
     args = parser.parse_args(args=_argv)
 
     try:
-        github = GitHub()
-        if args.project:
-            # Check specific project
-            if args.owner:
-                projects = github.list_projects_as_os_projects(
-                    args.owner, project_name=args.project
-                )
-            elif args.local:
-                project = CheckOS.get_local_project(args, github, args.project)
-                projects = [project] if project else []
-            else:
-                raise ValueError("--local or --owner needed with --project")
-        elif args.owner:
-            # Check all projects
-            projects = github.list_projects_as_os_projects(args.owner)
-        elif args.local:
-            projects = CheckOS.get_local_projects(
-                args.workspace, args, github, with_progress=True
-            )
-        else:
-            raise ValueError(
-                "Please provide --owner and --project, or use --local option."
-            )
-
-        if args.language:
-            projects = [p for p in projects if p.language == args.language]
-
-        if args.local:
-            local_projects = []
-            for project in projects:
-                checker = CheckOS(args=args, github=github, project=project)
-                if checker.check_local().ok:
-                    # non forked owned by owner
-                    if checker.check_git():
-                        local_projects.append(project)
-            projects = local_projects
-
-        for i, project in enumerate(projects):
-            checker = CheckOS(args=args, github=github, project=project)
-            checker.check(f"{i+1:3}:")
+        checker = CheckOS.from_args(args)
+        checker.check_projects()
     except Exception as ex:
         CheckOS.handle_exception(ex, debug=args.debug)
         raise ex
-
 
 if __name__ == "__main__":
     main()

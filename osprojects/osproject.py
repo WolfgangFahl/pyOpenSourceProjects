@@ -4,463 +4,19 @@ Created on 2022-01-24
 @author: wf
 """
 
-from __future__ import annotations
-
 import argparse
+import configparser
 import datetime
 import json
+import logging
 import os
-import re
 import subprocess
 import sys
-from typing import List, Optional
+from typing import Dict, List, Optional
 
-import requests
 from dateutil.parser import parse
 
-
-class TicketSystem(object):
-    """
-    platform for hosting OpenSourceProjects and their issues
-    """
-
-    def getIssues(self, project: OsProject, **kwargs) -> List[Ticket]:
-        """
-        get issues from the TicketSystem for a project
-        """
-        return NotImplemented
-
-    def projectUrl(self, project: OsProject):
-        """
-        url of the project
-        """
-        return NotImplemented
-
-    def ticketUrl(self, project: OsProject):
-        """
-        url of the ticket/issue list
-        """
-        return NotImplemented
-
-    def commitUrl(self, project: OsProject, commit_id: str):
-        """
-        url of the ticket/issue list
-        """
-        return NotImplemented
-
-
-class GitHub(TicketSystem):
-    """
-    wrapper for the GitHub api
-    """
-
-    def __init__(self):
-        self.access_token = self.load_access_token()
-        self.headers = (
-            {"Authorization": f"token {self.access_token}"} if self.access_token else {}
-        )
-
-    def load_access_token(self) -> str:
-        """
-        if $HOME/.github/access_token.json exists read the token from there
-        """
-        # Specify the path to the access token file
-        token_file_path = os.path.join(
-            os.getenv("HOME"), ".github", "access_token.json"
-        )
-
-        # Check if the file exists and read the token
-        if os.path.exists(token_file_path):
-            with open(token_file_path, "r") as token_file:
-                token_data = json.load(token_file)
-                return token_data.get("access_token")
-
-        # Return None if no token file is found
-        return None
-
-    def get_response(self, title: str, url: str, params={}, allow_redirects=True):
-        """
-        Get response from GitHub API or Google Docs API
-
-        Args:
-            title (str): Description of the request
-            url (str): URL to send the request to
-            params (dict): Query parameters for the request
-            allow_redirects (bool): Whether to follow redirects
-
-        Returns:
-            requests.Response: The response object
-        """
-        response = requests.get(
-            url, headers=self.headers, params=params, allow_redirects=allow_redirects
-        )
-
-        if response.status_code == 302 and not allow_redirects:
-            # Return the redirect URL if we're not following redirects
-            return response.headers["Location"]
-
-        if response.status_code not in [200, 302]:
-            err_msg = (
-                f"Failed to {title} for {url}: {response.status_code} - {response.text}"
-            )
-            raise Exception(err_msg)
-
-        return response
-
-    def get_repo_info(self, owner: str, project_name: str) -> dict:
-        """
-        Fetch repository information for a specific project.
-
-        Args:
-            owner (str): The GitHub username or organization name.
-            project_name (str): The name of the project.
-
-        Returns:
-            dict: The repository information.
-        """
-        url = f"https://api.github.com/repos/{owner}/{project_name}"
-        response = self.get_response("fetch repository", url)
-        return response.json()
-
-    def list_projects_as_os_projects(
-        self, owner: str, project_name: Optional[str] = None
-    ) -> List[OsProject]:
-        """
-        List all public repositories for a given owner and return them as OsProject instances.
-
-        Args:
-            owner (str): The GitHub username or organization name.
-            project_name (str, optional): If provided, return only this specific project.
-
-        Returns:
-            List[OsProject]: A list of OsProject instances representing the repositories.
-        """
-        if project_name:
-            repos = [self.get_repo_info(owner, project_name)]
-        else:
-            url = f"https://api.github.com/users/{owner}/repos"
-            params = {
-                "type": "all",
-                "per_page": 100,
-            }  # Include all repo types, 100 per page
-            all_repos = []
-            page = 1
-
-            while True:
-                params["page"] = page
-                response = self.get_response("fetch repositories", url, params)
-                response = requests.get(url, headers=self.headers, params=params)
-                repos = response.json()
-                if not repos:
-                    break  # No more repositories to fetch
-
-                all_repos.extend(repos)
-                page += 1
-
-            repos = all_repos
-
-        return [
-            OsProject(
-                owner=owner, project_id=repo["name"], ticketSystem=self, repo=repo
-            )
-            for repo in repos
-        ]
-
-    def get_project(self, owner: str, project_id: str) -> OsProject:
-        """
-        Get a specific project as an OsProject instance.
-
-        Args:
-            owner (str): The GitHub username or organization name.
-            project_id (str): The name of the project.
-            access_token (str, optional): GitHub personal access token for authentication.
-
-        Returns:
-            OsProject: An OsProject instance representing the repository.
-        """
-        projects = self.list_projects_as_os_projects(owner, project_name=project_id)
-        if projects:
-            return projects[0]
-        raise Exception(f"Project {owner}/{project_id} not found")
-
-    def getIssues(
-        self, project: OsProject, limit: int = None, **params
-    ) -> List[Ticket]:
-        payload = {}
-        issues = []
-        nextResults = True
-        params["per_page"] = 100
-        params["page"] = 1
-        fetched_count = 0  # Counter to track the number of issues fetched
-        while nextResults:
-            response = requests.request(
-                "GET",
-                self.ticketUrl(project),
-                headers=self.headers,
-                data=payload,
-                params=params,
-            )
-            if response.status_code == 403 and "rate limit" in response.text:
-                raise Exception("rate limit - you might want to use an access token")
-            issue_records = json.loads(response.text)
-            for record in issue_records:
-                tr = {
-                    "project": project,
-                    "title": record.get("title"),
-                    "body": record.get("body", ""),
-                    "createdAt": (
-                        parse(record.get("created_at"))
-                        if record.get("created_at")
-                        else ""
-                    ),
-                    "closedAt": (
-                        parse(record.get("closed_at"))
-                        if record.get("closed_at")
-                        else ""
-                    ),
-                    "state": record.get("state"),
-                    "number": record.get("number"),
-                    "url": f"{self.projectUrl(project)}/issues/{record.get('number')}",
-                }
-                issues.append(Ticket.init_from_dict(**tr))
-                fetched_count += 1
-                # Check if we have reached the limit
-                if limit is not None and fetched_count >= limit:
-                    nextResults = False
-                    break
-
-            if len(issue_records) < 100:
-                nextResults = False
-            else:
-                params["page"] += 1
-        return issues
-
-    def getComments(self, project: OsProject, issue_number: int) -> List[dict]:
-        """
-        Fetch all comments for a specific issue number from GitHub.
-        """
-        comments_url = GitHub.commentUrl(project, issue_number)
-        response = self.get_response("fetch comments", comments_url)
-        return response.json()
-
-    def get_latest_workflow_run(self, project: OsProject):
-        url = f"https://api.github.com/repos/{project.owner}/{project.project_id}/actions/runs"
-        response = self.get_response("workflow runs", url)
-        runs = response.json()["workflow_runs"]
-        return runs[0] if runs else None
-
-    def get_workflow_run_logs(
-        self, owner: str, repo: str, run_id: int, job_id: int
-    ) -> str:
-        """
-        Fetch the logs for a specific job in a GitHub Actions workflow run.
-
-        Args:
-            owner (str): The owner of the repository
-            repo (str): The name of the repository
-            run_id (int): The ID of the workflow run
-            job_id (int): The ID of the job within the run
-
-        Returns:
-            str: The log content
-        """
-        url = f"https://api.github.com/repos/{owner}/{repo}/actions/jobs/{job_id}/logs"
-        log_response = self.get_response("fetch job logs", url)
-        log_content = log_response.content.decode("utf-8-sig")
-
-        return log_content
-
-    def projectUrl(self, project: OsProject):
-        return f"https://github.com/{project.owner}/{project.project_id}"
-
-    def ticketUrl(self, project: OsProject):
-        return (
-            f"https://api.github.com/repos/{project.owner}/{project.project_id}/issues"
-        )
-
-    def commitUrl(self, project: OsProject, commit_id: str):
-        return f"{self.projectUrl(project)}/commit/{commit_id}"
-
-    def commentUrl(self, project: OsProject, issue_number: int):
-        """
-        Construct the URL for accessing comments of a specific issue.
-        """
-        return f"https://api.github.com/repos/{project.owner}/{project.project_id}/issues/{issue_number}/comments"
-
-    def resolveProjectUrl(self, url: str) -> (str, str):
-        """
-        Resolve project url to owner and project name
-
-        Returns:
-            (owner, project)
-        """
-        # https://www.rfc-editor.org/rfc/rfc3986#appendix-B
-        pattern = r"((https?:\/\/github\.com\/)|(git@github\.com:))(?P<owner>[^/?#]+)\/(?P<project>[^\./?#]+)(\.git)?"
-        match = re.match(pattern=pattern, string=url)
-        owner = match.group("owner")
-        project = match.group("project")
-        if owner and project:
-            return owner, project
-
-
-class Jira(TicketSystem):
-    """
-    wrapper for Jira api
-    """
-
-
-class OsProject(object):
-    """
-    an Open Source Project
-    """
-
-    def __init__(
-        self,
-        owner: str,
-        project_id: str,
-        ticketSystem: TicketSystem = None,
-        repo: dict = None,
-    ):
-        self.owner = owner
-        self.project_id = project_id
-        self._repo = repo or {}
-        self.ticketSystem = ticketSystem or GitHub()
-
-    @property
-    def title(self):
-        return self._repo.get("name") or self.project_id
-
-    @property
-    def url(self):
-        return (
-            self._repo.get("html_url")
-            or f"https://github.com/{self.owner}/{self.project_id}"
-        )
-
-    @property
-    def description(self):
-        return self._repo.get("description") or ""
-
-    @property
-    def language(self):
-        return self._repo.get("language") or "python"
-
-    @property
-    def created_at(self):
-        created_at = self._repo.get("created_at")
-        return (
-            datetime.datetime.fromisoformat(created_at.rstrip("Z"))
-            if created_at
-            else None
-        )
-
-    @property
-    def updated_at(self):
-        updated_at = self._repo.get("updated_at")
-        return (
-            datetime.datetime.fromisoformat(updated_at.rstrip("Z"))
-            if updated_at
-            else None
-        )
-
-    @property
-    def stars(self):
-        return self._repo.get("stargazers_count")
-
-    @property
-    def forks(self):
-        return self._repo.get("forks_count")
-
-    @property
-    def fqid(self):
-        return f"{self.owner}/{self.project_id}"
-
-    def __str__(self):
-        return self.fqid
-
-    @staticmethod
-    def getSamples():
-        samples = [
-            {
-                "project_id": "pyOpenSourceProjects",
-                "owner": "WolfgangFahl",
-                "title": "pyOpenSourceProjects",
-                "url": "https://github.com/WolfgangFahl/pyOpenSourceProjects",
-                "description": "Helper Library to organize open source Projects",
-                "language": "Python",
-                "created_at": datetime.datetime(year=2022, month=1, day=24),
-                "updated_at": datetime.datetime(year=2022, month=1, day=24),
-                "stars": 5,
-                "forks": 2,
-            }
-        ]
-        return samples
-
-    @classmethod
-    def fromRepo(cls):
-        """
-        Init OsProject from repo in current working directory
-        """
-        url = subprocess.check_output(["git", "config", "--get", "remote.origin.url"])
-        url = url.decode().strip("\n")
-        return cls.fromUrl(url)
-
-    @classmethod
-    def fromUrl(cls, url: str) -> OsProject:
-        """
-        Init OsProject from given url
-        """
-        if "github.com" in url:
-            github = GitHub()
-            owner, project_id = github.resolveProjectUrl(url)
-            if owner and project_id:
-                project = github.get_project(owner, project_id)
-                return project
-        raise Exception(f"Could not resolve the url '{url}' to an OsProject object")
-
-    def getIssues(self, **params) -> list:
-        tickets = self.ticketSystem.getIssues(self, **params)
-        tickets.sort(key=lambda r: getattr(r, "number"), reverse=True)
-        return tickets
-
-    def getAllTickets(self, limit: int = None, **params):
-        """
-        Get all Tickets of the project -  closed and open ones
-
-        Args:
-            limit(int): if set limit the number of tickets retrieved
-        """
-        issues = self.getIssues(state="all", limit=limit, **params)
-        return issues
-
-    def getCommits(self) -> List[Commit]:
-        commits = []
-        gitlogCmd = [
-            "git",
-            "--no-pager",
-            "log",
-            "--reverse",
-            r'--pretty=format:{"name":"%cn","date":"%cI","hash":"%h"}',
-        ]
-        gitLogCommitSubject = ["git", "log", "--format=%s", "-n", "1"]
-        rawCommitLogs = subprocess.check_output(gitlogCmd).decode()
-        for rawLog in rawCommitLogs.split("\n"):
-            log = json.loads(rawLog)
-            if log.get("date", None) is not None:
-                log["date"] = datetime.datetime.fromisoformat(log["date"])
-            log["project"] = self.project_id
-            log["host"] = self.ticketSystem.projectUrl(self)
-            log["path"] = ""
-            log["subject"] = subprocess.check_output(
-                [*gitLogCommitSubject, log["hash"]]
-            )[
-                :-1
-            ].decode()  # seperate query to avoid json escaping issues
-            commit = Commit()
-            for k, v in log.items():
-                setattr(commit, k, v)
-            commits.append(commit)
-        return commits
+from osprojects.github_api import GitHubApi, GitHubRepo
 
 
 class Ticket(object):
@@ -504,7 +60,7 @@ class Ticket(object):
         return f"""# {{{{Ticket
 |number={self.number}
 |title={self.title}
-|project={self.project.project_id}
+|project={self.project}
 |createdAt={self.createdAt if self.createdAt else ""}
 |closedAt={self.closedAt if self.closedAt else ""}
 |state={self.state}
@@ -542,6 +98,371 @@ class Commit(object):
         return markup
 
 
+class OsProjects:
+    """
+    a set of open source projects
+    """
+
+    def __init__(self):
+        """
+        constructor
+        """
+        self.projects = {}
+        self.projects_by_url = {}
+        self.local_projects = {}
+        self.selected_projects = []
+        self.owners = []
+        self.github = GitHubApi.get_instance()
+
+    def clear_selection(self):
+        self.selected_projects = {}
+
+    def add_selection(self,project):
+        self.selected_projects[project.projectUrl()]=project
+
+    def select_projects(self, owner=None, project_id=None, local_only=False):
+        """
+        Select projects based on given criteria.
+
+        Args:
+            owner (Optional[str]): The owner of the projects to select.
+            project_id (Optional[str]): The ID of a specific project to select.
+            local_only (bool): Whether to select only local projects.
+
+        Returns:
+            Dict[str, OsProject]: A dictionary of selected projects.
+
+        Raises:
+            ValueError: If owner or local_only flag is not specified with project_id.
+        """
+        if project_id:
+            if owner:
+                key = f"https://github.com/{owner}/{project_id}"
+            elif local_only:
+                for _url, project in self.local_projects.items():
+                    if project.project_id == project_id:
+                        self.add_selection(project)
+            else:
+                raise ValueError("Owner or local_only flag must be specified with project_id")
+
+            project = self.projects_by_url.get(key)
+            if project:
+                self.add_selection(project)
+        elif owner:
+            if owner in self.projects:
+                for project in self.projects[owner]:
+                    self.add_selection(project)
+        elif local_only:
+            for project in  self.local_projects.values():
+                self.add_selection(project)
+        else:
+            for project in self.projects_by_url.values():
+                self.add_selection(project)
+
+        return self.selected_projects
+
+    def filter_projects(self, language=None, local_only=False):
+        filtered_projects = self.selected_projects.copy()
+
+        if language:
+            filtered_projects = [p for p in filtered_projects if p.language == language]
+
+        if local_only:
+            filtered_projects = [p for p in filtered_projects if p.folder]
+
+        self.selected_projects = filtered_projects
+        return self.selected_projects
+
+
+    def add_projects_of_owner(self, owner: str, cache_expiry: int = 300):
+        """
+        add the projects of the given owner
+        """
+        if not owner in self.projects:
+            self.projects[owner] = {}
+            repo_infos = self.github.repos_for_owner(owner, cache_expiry)
+            for repo_info in repo_infos:
+                project_id = repo_info["name"]
+                os_project = OsProject(owner=owner, project_id=project_id)
+                os_project.repo_info = repo_info
+                self.projects[owner][project_id] = os_project
+                self.projects_by_url[os_project.projectUrl()] = os_project
+        else:
+            # owner already known
+            pass
+
+    @classmethod
+    def from_owners(cls, owners: list[str]):
+        osp = cls()
+        for owner in owners:
+            osp.add_projects_of_owner(owner)
+        return osp
+
+    @classmethod
+    def get_project_url_from_git_config(cls, project_path: str) -> Optional[str]:
+        """
+        Get the project URL from the git config file.
+
+        Args:
+            project_path (str): The path to the project directory.
+
+        Returns:
+            Optional[str]: The project URL if found, None otherwise.
+        """
+        config_path = os.path.join(project_path, ".git", "config")
+        if not os.path.exists(config_path):
+            return None
+
+        config = configparser.ConfigParser()
+        config.read(config_path)
+
+        if 'remote "origin"' not in config:
+            return None
+
+        url= config['remote "origin"']["url"]
+        # remove trailing / if any
+        url = url.rstrip('/')
+        return url
+
+    @classmethod
+    def from_folder(cls, folder_path: str):
+        """
+        collect all github projects from the given folders
+        """
+        osp = cls()
+        all_folders = []
+        for d in os.listdir(folder_path):
+            sub_folder=os.path.join(folder_path, d)
+            if os.path.isdir(sub_folder):
+                all_folders.append(sub_folder)
+        for folder in all_folders:
+            project_url = cls.get_project_url_from_git_config(folder)
+            if project_url:
+                github_repo = GitHubRepo.from_url(project_url)
+                if github_repo:
+                    osp.add_projects_of_owner(github_repo.owner)
+                    if not project_url in  osp.projects_by_url:
+                        logging.warn(f"{project_url} not found in projects_by_url")
+                    else:
+                        local_project = osp.projects_by_url[project_url]
+                        local_project.folder = folder
+                        osp.local_projects[project_url] = local_project
+        return osp
+
+
+class OsProject:
+    """
+    a GitHub based opens source project
+    """
+
+    def __init__(self, owner: str = None, project_id: str = None):
+        self.repo_info = None  # might be fetched
+        self.folder = None  # set for local projects
+        if owner and project_id:
+            self.repo = GitHubRepo(owner=owner, project_id=project_id)
+
+    @classmethod
+    def fromUrl(cls, url: str) -> "OsProject":
+        """
+        Init OsProject from given url
+        """
+        if "github.com" in url:
+            os_project = cls()
+            os_project.repo = GitHubRepo.from_url(url)
+        else:
+            raise Exception(f"url '{url}' is not a github.com url ")
+        return os_project
+
+    @classmethod
+    def fromRepo(cls):
+        """
+        Init OsProject from repo in current working directory
+        """
+        url = subprocess.check_output(["git", "config", "--get", "remote.origin.url"])
+        url = url.decode().strip("\n")
+        return cls.fromUrl(url)
+
+    def getIssues(self, limit: int = None, **params) -> List[Ticket]:
+
+        # Fetch the raw issue records using the new getIssueRecords method
+        issue_records = self.repo.getIssueRecords(limit=limit, **params)
+
+        issues = []
+        for record in issue_records:
+            tr = {
+                "project": self.repo.project_id,
+                "title": record.get("title"),
+                "body": record.get("body", ""),
+                "createdAt": (
+                    parse(record.get("created_at")) if record.get("created_at") else ""
+                ),
+                "closedAt": (
+                    parse(record.get("closed_at")) if record.get("closed_at") else ""
+                ),
+                "state": record.get("state"),
+                "number": record.get("number"),
+                "url": f"{self.projectUrl()}/issues/{record.get('number')}",
+            }
+            issues.append(Ticket.init_from_dict(**tr))
+
+            # Check if we have reached the limit
+            if limit is not None and len(issues) >= limit:
+                break
+
+        return issues
+
+    def getAllTickets(
+        self, limit: int = None, with_sort: bool = True
+    ) -> Dict[int, Ticket]:
+        """
+        Get all Tickets of the project - closed and open ones
+
+        Args:
+            limit(int): if set, limit the number of tickets retrieved
+            with_sort(bool): if True, sort the tickets by number in descending order
+
+        Returns:
+            Dict[int, Ticket]: A dictionary of tickets keyed by their number
+        """
+        tickets = self.getIssues(state="all", limit=limit)
+
+        # Sort the tickets if with_sort is True
+        if with_sort:
+            tickets.sort(key=lambda r: getattr(r, "number"), reverse=True)
+
+        # Convert the list of tickets into a dictionary keyed by the ticket number
+        tickets_dict = {ticket.number: ticket for ticket in tickets}
+
+        return tickets_dict
+
+    def getComments(self, issue_number: int) -> List[dict]:
+        """
+        Fetch all comments for a specific issue number from GitHub.
+        """
+        comments_url = self.commentUrl(issue_number)
+        response = self.get_response("fetch comments", comments_url)
+        return response.json()
+
+    def projectUrl(self):
+        return f"https://github.com/{self.repo.owner}/{self.repo.project_id}"
+
+    def commitUrl(self, commit_id: str):
+        return f"{self.projectUrl()}/commit/{commit_id}"
+
+    def commentUrl(self, issue_number: int):
+        """
+        Construct the URL for accessing comments of a specific issue.
+        """
+        return f"{self.repo.github.api_url}/repos/{self.repo.owner}/{self.repo.project_id}/issues/{issue_number}/comments"
+
+    @property
+    def project_id(self):
+        return self.repo.project_id
+
+    @property
+    def owner(self):
+        return self.repo.owner
+
+    @property
+    def title(self):
+        return self.repo_info.get("name") or self.project_id
+
+    @property
+    def url(self):
+        return (
+            self.repo_info.get("html_url")
+            or f"https://github.com/{self.repo.owner}/{self.project_id}"
+        )
+
+    @property
+    def description(self):
+        return self.repo_info.get("description") or ""
+
+    @property
+    def language(self):
+        return self.repo_info.get("language") or "python"
+
+    @property
+    def created_at(self):
+        created_at = self.repo_info.get("created_at")
+        return (
+            datetime.datetime.fromisoformat(created_at.rstrip("Z"))
+            if created_at
+            else None
+        )
+
+    @property
+    def updated_at(self):
+        updated_at = self.repo_info.get("updated_at")
+        return (
+            datetime.datetime.fromisoformat(updated_at.rstrip("Z"))
+            if updated_at
+            else None
+        )
+
+    @property
+    def stars(self):
+        return self.repo_info.get("stargazers_count")
+
+    @property
+    def forks(self):
+        return self.repo_info.get("forks_count")
+
+    @property
+    def fqid(self):
+        return f"{self.repo.owner}/{self.repo.project_id}"
+
+    def __str__(self):
+        return self.fqid
+
+    @staticmethod
+    def getSamples():
+        samples = [
+            {
+                "project_id": "pyOpenSourceProjects",
+                "owner": "WolfgangFahl",
+                "title": "pyOpenSourceProjects",
+                "url": "https://github.com/WolfgangFahl/pyOpenSourceProjects",
+                "description": "Helper Library to organize open source Projects",
+                "language": "Python",
+                "created_at": datetime.datetime(year=2022, month=1, day=24),
+                "updated_at": datetime.datetime(year=2022, month=1, day=24),
+                "stars": 5,
+                "forks": 2,
+            }
+        ]
+        return samples
+
+    def getCommits(self) -> List[Commit]:
+        commits = []
+        gitlogCmd = [
+            "git",
+            "--no-pager",
+            "log",
+            "--reverse",
+            r'--pretty=format:{"name":"%cn","date":"%cI","hash":"%h"}',
+        ]
+        gitLogCommitSubject = ["git", "log", "--format=%s", "-n", "1"]
+        rawCommitLogs = subprocess.check_output(gitlogCmd).decode()
+        for rawLog in rawCommitLogs.split("\n"):
+            log = json.loads(rawLog)
+            if log.get("date", None) is not None:
+                log["date"] = datetime.datetime.fromisoformat(log["date"])
+            log["project"] = self.project_id
+            log["host"] = self.projectUrl()
+            log["path"] = ""
+            log["subject"] = subprocess.check_output(
+                [*gitLogCommitSubject, log["hash"]]
+            )[
+                :-1
+            ].decode()  # seperate query to avoid json escaping issues
+            commit = Commit()
+            for k, v in log.items():
+                setattr(commit, k, v)
+            commits.append(commit)
+        return commits
+
+
 def gitlog2wiki(_argv=None):
     """
     cmdline interface to get gitlog entries in wiki markup
@@ -568,13 +489,6 @@ def main(_argv=None):
         help="get needed information form repository of current location",
     )
     parser.add_argument(
-        "-ts",
-        "--ticketsystem",
-        default="github",
-        choices=["github", "jira"],
-        help="platform the project is hosted",
-    )
-    parser.add_argument(
         "-s",
         "--state",
         choices=["open", "closed", "all"],
@@ -584,13 +498,10 @@ def main(_argv=None):
     parser.add_argument("-V", "--version", action="version", version="gitlog2wiki 0.1")
 
     args = parser.parse_args(args=_argv)
-    # resolve ticketsystem
-    ticketSystem = GitHub()
-    if args.ticketsystem == "jira":
-        ticketSystem = Jira()
     if args.project and args.owner:
         osProject = OsProject(
-            owner=args.owner, project_id=args.project, ticketSystem=ticketSystem
+            owner=args.owner,
+            project_id=args.project,
         )
     else:
         osProject = OsProject.fromRepo()

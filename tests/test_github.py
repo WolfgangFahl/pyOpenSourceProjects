@@ -4,8 +4,10 @@ Created on 27.08.2024
 @author: wf
 """
 
-from osprojects.action_log import ExtendedGitHub, TestSummary, WorkflowRunAnalysis
-from osprojects.osproject import GitHub, OsProject
+import unittest
+import os
+from osprojects.action_log import TestSummary, WorkflowRunAnalysis, GitHubWorkflowAnalyzer
+from osprojects.osproject import GitHubRepo, OsProject, OsProjects
 from tests.basetest import BaseTest
 
 
@@ -17,9 +19,9 @@ class TestGitHub(BaseTest):
     def setUp(self, debug=True, profile=True):
         BaseTest.setUp(self, debug=debug, profile=profile)
 
-    def testResolveProjectUrl(self):
+    def test_GitHubRepo_from_url(self):
         """
-        tests the resolving of the project url
+        tests the creating GitHubRepos from the project url
         """
         urlCases = [
             {
@@ -42,39 +44,39 @@ class TestGitHub(BaseTest):
             expectedOwner = urlCase["owner"]
             expectedProject = urlCase["project"]
             for url in urlVariants:
-                giturl = f"{url}.git"
-                github = GitHub()
-                owner, project = github.resolveProjectUrl(giturl)
-                self.assertEqual(expectedOwner, owner)
-                self.assertEqual(expectedProject, project)
+                github_repo = GitHubRepo.from_url(url)
+                self.assertEqual(expectedOwner, github_repo.owner)
+                self.assertEqual(expectedProject, github_repo.project_id)
 
-    def testListProjects(self):
+    def testOsProjects(self):
         """
         tests the list_projects_as_os_projects method
         """
         owner = "WolfgangFahl"
-        github = GitHub()
+        project_id = "pyOpenSourceProjects"
+        osprojects = OsProjects.from_owners([owner])
 
-        # Test list_projects_as_os_projects
-        projects = github.list_projects_as_os_projects(owner)
         debug = self.debug
         # debug = True
         if debug:
-            for project in projects:
-                print(project)
-        self.assertIsInstance(projects, list)
+            index = 0
+            for owner, projects in osprojects.projects.items():
+                for project in projects:
+                    index += 1
+                    print(f"{index:3}:{owner}:{project}")
+        self.assertTrue(owner in osprojects.projects)
+        projects = osprojects.projects[owner]
+        self.assertIsInstance(projects, dict)
         self.assertTrue(len(projects) > 0, "No projects found for WolfgangFahl")
-
         # Check if pyOpenSourceProjects is in the list
-        pyosp_found = any(
-            project.project_id == "pyOpenSourceProjects" for project in projects
-        )
+        self.assertTrue(project_id in projects)
+        pyosp_found = projects[project_id]
         self.assertTrue(
             pyosp_found, "pyOpenSourceProjects not found in the list of projects"
         )
 
         # Test a sample project's structure
-        sample_project = projects[0]
+        sample_project = projects["py-yprinciple-gen"]
         expected_attributes = {
             "project_id",
             "owner",
@@ -94,31 +96,28 @@ class TestGitHub(BaseTest):
 
         # Check if all items are OsProject instances
         self.assertTrue(
-            all(isinstance(project, OsProject) for project in projects),
+            all(isinstance(project, OsProject) for project in projects.values()),
             "Not all items are OsProject instances",
         )
 
-        # Test a sample OsProject
-        sample_os_project = projects[0]
-        self.assertEqual(sample_os_project.owner, owner)
-        self.assertIsInstance(sample_os_project.project_id, str)
-        self.assertIsInstance(sample_os_project.ticketSystem, GitHub)
-
-    def testGetSpecificProject(self):
+    @unittest.skipIf(
+        BaseTest.inPublicCI(),
+        "Tests querying wikidata which is often blocked on public CI",
+    )
+    def test_projects_from_folder(self):
         """
-        tests getting a specific project
+        test projects from a specific folder
         """
-        owner = "WolfgangFahl"
-        project_name = "pyOpenSourceProjects"
-        github = GitHub()
-
-        project = github.list_projects_as_os_projects(owner, project_name=project_name)[
-            0
-        ]
-        self.assertIsInstance(project, OsProject)
-        self.assertEqual(project.project_id, project_name)
-        self.assertEqual(project.owner, owner)
-        self.assertIsInstance(project.ticketSystem, GitHub)
+        debug=self.debug
+        #debug=True
+        home_dir = os.path.expanduser("~")
+        folder_path=os.path.join(home_dir,"py-workspace")
+        osprojects=OsProjects.from_folder(folder_path)
+        count=len(osprojects.local_projects)
+        if debug:
+            print(f"found {count} local projects")
+        self.assertTrue(count>30)
+        pass
 
     def test_log_analysis(self):
         """
@@ -297,10 +296,10 @@ FAILED (errors=8))
             },
         ]
 
-        github = ExtendedGitHub()
+        gwa=GitHubWorkflowAnalyzer()
         for test_case in logs:
             with self.subTest(url=test_case["url"]):
-                analysis = github.extract_log_info(test_case["log"])
+                analysis = gwa.extract_log_info(test_case["log"])
                 print(f"\nAnalysis for {test_case['url']}:")
                 analysis.show()
 
@@ -340,33 +339,33 @@ FAILED (errors=8))
                 "single_failure",
                 "https://github.com/WolfgangFahl/pyOnlineSpreadSheetEditing/actions/runs/10571934380/job/29288830929",
                 "failed",
-                1
+                1,
             ),
             (
                 "success",
                 "https://github.com/WolfgangFahl/py-sidif/actions/runs/10228791653/job/28301694479",
                 "succeeded",
-                0
+                0,
             ),
             (
                 "multiple_failures",
                 "https://github.com/WolfgangFahl/scan2wiki/actions/runs/10557241724/job/29244366904",
                 "failed",
-                3  # Adjust this number based on actual failures
+                3,  # Adjust this number based on actual failures
             ),
             (
                 "authorization",
                 "https://github.com/WolfgangFahl/pyOpenSourceProjects/actions/runs/10573294825/job/29292512092",
                 "failed",
-                6  # Expecting 6 failures
-            )
+                6,  # Expecting 6 failures
+            ),
         ]
 
-        github = ExtendedGitHub()
+        gwa=GitHubWorkflowAnalyzer()
 
         for case_name, url, expected_status, expected_failures in test_cases:
             with self.subTest(case=case_name):
-                analysis = github.analyze_workflow_run(url, save_log=True)
+                analysis = gwa.analyze_workflow_run(url, save_log=True)
 
                 self.assertIsInstance(analysis, WorkflowRunAnalysis)
                 self.assertEqual(analysis.build_status, expected_status)
@@ -382,4 +381,6 @@ FAILED (errors=8))
                     print("\nDetailed Analysis:")
                     print(f"Number of failed tests: {len(analysis.failed_tests)}")
                     for test in analysis.failed_tests:
-                        print(f"Test: {test.name}, File: {test.file}, Line: {test.line}")
+                        print(
+                            f"Test: {test.name}, File: {test.file}, Line: {test.line}"
+                        )

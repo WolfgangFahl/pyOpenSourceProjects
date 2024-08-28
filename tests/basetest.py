@@ -8,6 +8,7 @@ import getpass
 import io
 import os
 import time
+import unittest
 from contextlib import redirect_stdout
 from typing import Callable, Type
 from unittest import TestCase
@@ -84,6 +85,11 @@ class BaseTest(TestCase):
         f.seek(0)
         output = f.read()
         return output
+
+
+if __name__ == "__main__":
+    # import sys;sys.argv = ['', 'Test.testName']
+    unittest.main()
 
 
 class Profiler:

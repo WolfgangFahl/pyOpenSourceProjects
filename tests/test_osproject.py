@@ -4,8 +4,6 @@ Created on 2022-01-24
 @author: wf
 """
 
-import unittest
-
 from osprojects.osproject import Commit, OsProject, Ticket, gitlog2wiki, main
 from tests.basetest import BaseTest
 
@@ -21,13 +19,18 @@ class TestOsProject(BaseTest):
         """
         osProject = OsProject(owner="WolfgangFahl", project_id="pyOpenSourceProjects")
         tickets = osProject.getAllTickets()
-        expectedTicket = self.getSampleById(Ticket, "number", 2)
-        expectedTicket.project = osProject
-        comparison_ticket_dict = tickets[-2].__dict__
-        comparison_ticket_dict.pop("body", None)
-        self.assertDictEqual(expectedTicket.__dict__, comparison_ticket_dict)
-        commit = Commit()
-        ticket = Ticket()
+        sampleTicket = self.getSampleById(Ticket, "number", 2)
+        sampleTicket.project = osProject.project_id
+        ticket2 = tickets[2]
+        # Equality tests for each attribute
+        self.assertEqual(ticket2.title, sampleTicket.title)
+        self.assertTrue(hasattr(ticket2, "body"))
+        self.assertEqual(ticket2.createdAt, sampleTicket.createdAt)
+        self.assertEqual(ticket2.closedAt, sampleTicket.closedAt)
+        self.assertEqual(ticket2.number, sampleTicket.number)
+        self.assertEqual(ticket2.state, sampleTicket.state)
+        self.assertEqual(ticket2.url, sampleTicket.url)
+        self.assertEqual(ticket2.project, sampleTicket.project)
         pass
 
     def testGetCommits(self):
@@ -47,7 +50,7 @@ class TestOsProject(BaseTest):
         tests cmdline of osproject
         """
         testParams = [
-            ["-o", "WolfgangFahl", "-p", "pyOpenSourceProjects", "-ts", "github"],
+            ["-o", "WolfgangFahl", "-p", "pyOpenSourceProjects"],
             ["--repo"],
         ]
         for params in testParams:
@@ -80,8 +83,3 @@ class TestCommit(BaseTest):
         commit = self.getSampleById(Commit, "hash", "106254f")
         expectedMarkup = "{{commit|host=https://github.com/WolfgangFahl/pyOpenSourceProjects|path=|project=pyOpenSourceProjects|subject=Initial commit|name=GitHub|date=2022-01-24 07:02:55+01:00|hash=106254f|storemode=subobject|viewmode=line}}"
         self.assertEqual(expectedMarkup, commit.toWikiMarkup())
-
-
-if __name__ == "__main__":
-    # import sys;sys.argv = ['', 'Test.testName']
-    unittest.main()
