@@ -119,14 +119,16 @@ class OsProjects:
         self.selected_projects = {}
 
     def add_selection(self, project):
-        self.selected_projects[project.projectUrl()] = project
+        is_fork = project.repo_info["fork"]
+        if not is_fork:
+            self.selected_projects[project.projectUrl()] = project
 
-    def select_projects(self, owner=None, project_id=None, local_only=False):
+    def select_projects(self, owners=None, project_id=None, local_only=False):
         """
         Select projects based on given criteria.
 
         Args:
-            owner (Optional[str]): The owner of the projects to select.
+            owners (Optional[list[str]]): The owners of the projects to select.
             project_id (Optional[str]): The ID of a specific project to select.
             local_only (bool): Whether to select only local projects.
 
@@ -137,8 +139,12 @@ class OsProjects:
             ValueError: If owner or local_only flag is not specified with project_id.
         """
         if project_id:
-            if owner:
-                key = f"https://github.com/{owner}/{project_id}"
+            if owners:
+                for owner in owners:
+                    key = f"https://github.com/{owner}/{project_id}"
+                    project = self.projects_by_url.get(key)
+                    if project:
+                        self.add_selection(project)
             elif local_only:
                 for _url, project in self.local_projects.items():
                     if project.project_id == project_id:
@@ -148,13 +154,11 @@ class OsProjects:
                     "Owner or local_only flag must be specified with project_id"
                 )
 
-            project = self.projects_by_url.get(key)
-            if project:
-                self.add_selection(project)
-        elif owner:
-            if owner in self.projects:
-                for project in self.projects[owner]:
-                    self.add_selection(project)
+        elif owners:
+            for owner in owners:
+                if owner in self.projects:
+                    for project in self.projects[owner].values():
+                        self.add_selection(project)
         elif local_only:
             for project in self.local_projects.values():
                 self.add_selection(project)
@@ -542,7 +546,7 @@ def main(_argv=None):
     main command line entry point
     """
     parser = argparse.ArgumentParser(description="Issue2ticket")
-    parser.add_argument("-o", "--owner", help="project owner or organization")
+    parser.add_argument("-o", "--owner", help="project owner")
     parser.add_argument("-p", "--project", help="name of the project")
     parser.add_argument(
         "--repo",
@@ -561,7 +565,7 @@ def main(_argv=None):
     args = parser.parse_args(args=_argv)
     if args.project and args.owner:
         osProject = OsProject(
-            owner=args.owner,
+            owner=args.owners[0],
             project_id=args.project,
         )
     else:

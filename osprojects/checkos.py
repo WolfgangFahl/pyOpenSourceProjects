@@ -37,9 +37,9 @@ class CheckOS:
     def select_projects(self):
         try:
             if self.args.project:
-                if self.args.owner:
+                if self.args.owners:
                     return self.osprojects.select_projects(
-                        owner=self.args.owner, project_id=self.args.project
+                        owners=self.args.owners, project_id=self.args.project
                     )
                 elif self.args.local:
                     return self.osprojects.select_projects(
@@ -47,8 +47,8 @@ class CheckOS:
                     )
                 else:
                     raise ValueError("--local or --owner needed with --project")
-            elif self.args.owner:
-                return self.osprojects.select_projects(owner=self.args.owner)
+            elif self.args.owners:
+                return self.osprojects.select_projects(owners=self.args.owners)
             elif self.args.local:
                 return self.osprojects.select_projects(local_only=True)
             else:
@@ -103,7 +103,7 @@ def main(_argv=None):
         action="store_true",
         help="open default editor on failed files",
     )
-    parser.add_argument("-o", "--owner", help="project owner or organization")
+    parser.add_argument("-o", "--owners", nargs="+", help="project owners")
     parser.add_argument("-p", "--project", help="name of the project")
     parser.add_argument("-l", "--language", help="filter projects by language")
     parser.add_argument(
