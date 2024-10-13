@@ -252,8 +252,8 @@ FAILED (errors=8))
                 "expectations": {
                     "build_status": "failed",
                     "num_failed_tests": 8,
-                    "failed_test_name": "tests.test_barcode",
-                    "error_message": "No module named 'ngwidgets'",
+                    "failed_test_name": "tests.test_amazon (unittest.loader._FailedTest)",
+                    "error_message": "Failed to import test module: tests.test_amazon",
                 },
             },
             {
@@ -293,7 +293,7 @@ FAILED (errors=8))
                 "expectations": {
                     "build_status": "failed",
                     "num_failed_tests": 1,
-                    "failed_test_name": "testSPARQLQuery",
+                    "failed_test_name": "testSPARQLQuery (tests.test_tableQuery.TestTableQuery)",
                     "total_tests": 10,
                     "time_taken": 4.462,
                     "num_failures": 1,
