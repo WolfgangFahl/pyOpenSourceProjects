@@ -3,7 +3,7 @@ Created on 2024-08-27
 
 @author: wf
 """
-
+import unittest
 import time
 
 from osprojects.github_api import GitHubAction, GitHubApi
@@ -42,6 +42,7 @@ class TestGitHubApi(BaseTest):
                         repos[0], repos[trial], f"Cache was not used for {owner}"
                     )
 
+    @unittest.skipIf(BaseTest.inPublicCI(), "missing admin rights in public CI")
     def test_github_action_from_url(self):
         """
         Test creating GitHubAction instances from URLs.
