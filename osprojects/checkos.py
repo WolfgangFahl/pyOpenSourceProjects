@@ -8,10 +8,11 @@ import argparse
 import logging
 import os
 import traceback
-
 from argparse import Namespace
-from osprojects.osproject import OsProjects
+
 from osprojects.check_project import CheckProject
+from osprojects.osproject import OsProjects
+
 
 class CheckOS:
     """
@@ -72,19 +73,22 @@ class CheckOS:
         self.select_projects()
         self.filter_projects()
 
-        for i, (_url, project) in enumerate(self.osprojects.selected_projects.items(), 1):
+        for i, (_url, project) in enumerate(
+            self.osprojects.selected_projects.items(), 1
+        ):
             checker = CheckProject(self, project, self.args)
             checker.check(f"{i:3}:")
 
-    def handle_exception(self,ex: Exception):
+    def handle_exception(self, ex: Exception):
         CheckOS.show_exception(ex, self.args.debug)
 
     @staticmethod
     def show_exception(ex: Exception, debug: bool = False):
-        err_msg=f"Error: {str(ex)}"
+        err_msg = f"Error: {str(ex)}"
         logging.error(err_msg)
         if debug:
             print(traceback.format_exc())
+
 
 def main(_argv=None):
     """

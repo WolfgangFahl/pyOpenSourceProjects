@@ -14,8 +14,8 @@ import subprocess
 import sys
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 
-from tqdm import tqdm
 from dateutil.parser import parse
+from tqdm import tqdm
 
 from osprojects.github_api import GitHubApi, GitHubRepo
 
@@ -565,7 +565,7 @@ def main(_argv=None):
     args = parser.parse_args(args=_argv)
     if args.project and args.owner:
         osProject = OsProject(
-            owner=args.owners[0],
+            owner=args.owner,
             project_id=args.project,
         )
     else:

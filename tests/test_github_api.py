@@ -3,8 +3,9 @@ Created on 2024-08-27
 
 @author: wf
 """
-import unittest
+
 import time
+import unittest
 
 from osprojects.github_api import GitHubAction, GitHubApi
 from tests.basetest import BaseTest

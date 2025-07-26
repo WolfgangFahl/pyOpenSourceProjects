@@ -325,9 +325,9 @@ class GitHubAction:
         url = f"https://api.github.com/repos/{project.owner}/{project.project_id}/actions/runs"
         response = project.repo.github.get_response("fetch latest workflow run", url)
         runs = response.json().get("workflow_runs", [])
-        run=None
+        run = None
         if runs:
-            run=runs[0]  # Return the latest run
+            run = runs[0]  # Return the latest run
         return run
 
     def fetch_logs(self):

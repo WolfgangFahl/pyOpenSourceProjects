@@ -1,18 +1,23 @@
-'''
+"""
 Created on 2024-08-28
 
 @author: wf
-'''
-from dataclasses import dataclass
+"""
+
 import os
-from typing import List
 import tomllib
+from dataclasses import dataclass
+from typing import List
+
 from git import Repo
 from git.exc import InvalidGitRepositoryError, NoSuchPathError
 from packaging import version
+
 from osprojects.action_log import GitHubAction
+
 # original at ngwidgets - use redundant local copy ...
 from osprojects.editor import Editor
+
 
 @dataclass
 class Check:
@@ -35,12 +40,14 @@ class Check:
         check = Check(ok, path, msg=path, content=content)
         return check
 
+
 class CheckProject:
     """
     Checker for an individual open source project
     """
-    def __init__(self,parent, project, args):
-        self.parent=parent
+
+    def __init__(self, parent, project, args):
+        self.parent = parent
         self.project = project
         self.args = args
         self.checks: List[Check] = []
