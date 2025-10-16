@@ -13,7 +13,7 @@ from git import Repo
 from git.exc import InvalidGitRepositoryError, NoSuchPathError
 from packaging import version
 
-from osprojects.action_log import GitHubAction
+from osprojects.github_api import GitHubAction
 
 # original at ngwidgets - use redundant local copy ...
 from osprojects.editor import Editor
@@ -320,7 +320,7 @@ class CheckProject:
                 self.add_check(
                     False,
                     "No GitHub Actions runs found",
-                    self.github.ticketUrl(self.project),
+                    self.project.repo.ticketUrl(),
                 )
 
         except InvalidGitRepositoryError:
