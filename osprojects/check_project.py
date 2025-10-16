@@ -55,7 +55,7 @@ class CheckProject:
         self.project_name = None
         self.requires_python = None
         self.min_python_version_minor = None
-        self.max_python_version_minor = 12  # python 3.12 is max version
+        self.max_python_version_minor = 13  # python 3.13 is max version
 
     @property
     def total(self) -> int:
