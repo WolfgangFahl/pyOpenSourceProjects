@@ -1,7 +1,4 @@
 # pyOpenSourceProjects
-Helper Library to organize open source Projects
-
-# pyOpenSourceProjects
 
 Helper Library to organize open source Projects
 
