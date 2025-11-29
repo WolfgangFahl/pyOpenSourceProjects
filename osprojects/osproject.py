@@ -345,7 +345,8 @@ class OsProject:
         """
         url = subprocess.check_output(["git", "config", "--get", "remote.origin.url"])
         url = url.decode().strip("\n")
-        return cls.fromUrl(url)
+        repo= cls.fromUrl(url)
+        return repo
 
     def getIssues(self, limit: int = None, **params) -> List[Ticket]:
 
