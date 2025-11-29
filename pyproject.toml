@@ -31,11 +31,10 @@ dependencies = [
   # https://pypi.org/project/tqdm/
   "tqdm>=4.66.5"
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 classifiers = [
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13"
