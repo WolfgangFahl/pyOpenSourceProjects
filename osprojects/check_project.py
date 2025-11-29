@@ -97,6 +97,22 @@ class CheckProject:
         self.checks.append(path_exists)
         return path_exists
 
+    def generate_badge_markdown(self) -> str:
+        """Generate README.md badge table markup."""
+        project_name = self.project_name
+        owner = self.project.owner
+        project_id = self.project.project_id
+
+        markup= f"""| | |
+    | :--- | :--- |
+    | **PyPi** | [![PyPI Status](https://img.shields.io/pypi/v/{project_name}.svg)](https://pypi.python.org/pypi/{project_name}/) [![License](https://img.shields.io/github/license/{owner}/{project_id}.svg)](https://www.apache.org/licenses/LICENSE-2.0) [![pypi](https://img.shields.io/pypi/pyversions/{project_name})](https://pypi.org/project/{project_name}/) [![format](https://img.shields.io/pypi/format/{project_name})](https://pypi.org/project/{project_name}/) [![downloads](https://img.shields.io/pypi/dd/{project_name})](https://pypi.org/project/{project_name}/) |
+    | **GitHub** | [![Github Actions Build](https://github.com/{owner}/{project_id}/actions/workflows/build.yml/badge.svg)](https://github.com/{owner}/{project_id}/actions/workflows/build.yml) [![Release](https://img.shields.io/github/v/release/{owner}/{project_id})](https://github.com/{owner}/{project_id}/releases) [![Contributors](https://img.shields.io/github/contributors/{owner}/{project_id})](https://github.com/{owner}/{project_id}/graphs/contributors) [![Last Commit](https://img.shields.io/github/last-commit/{owner}/{project_id})](https://github.com/{owner}/{project_id}/commits/) [![GitHub issues](https://img.shields.io/github/issues/{owner}/{project_id}.svg)](https://github.com/{owner}/{project_id}/issues) [![GitHub closed issues](https://img.shields.io/github/issues-closed/{owner}/{project_id}.svg)](https://github.com/{owner}/{project_id}/issues/?q=is%3Aissue+is%3Aclosed) |
+    | **Code** | [![style-black](https://img.shields.io/badge/%20style-black-000000.svg)](https://github.com/psf/black) [![imports-isort](https://img.shields.io/badge/%20imports-isort-%231674b1)](https://pycqa.github.io/isort/) |
+    | **Docs** | [![API Docs](https://img.shields.io/badge/API-Documentation-blue)](https://{owner}.github.io/{project_id}/) [![formatter-docformatter](https://img.shields.io/badge/%20formatter-docformatter-fedcba.svg)](https://github.com/PyCQA/docformatter) [![style-google](https://img.shields.io/badge/%20style-google-3666d6.svg)](https://google.github.io/styleguide/pyguide.html#s3.8-comments-and-docstrings) |"""
+        return markup
+
+
+
     def check_local(self) -> Check:
         local = Check.file_exists(self.project_path)
         return local

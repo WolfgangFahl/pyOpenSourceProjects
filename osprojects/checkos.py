@@ -74,6 +74,9 @@ class CheckOS:
         ):
             checker = CheckProject(self, project, self.args)
             checker.check(f"{i:3}:")
+            if self.args.badges:
+                print(checker.generate_badge_markdown())
+
 
     def handle_exception(self, ex: Exception):
         CheckOS.show_exception(ex, self.args.debug)
@@ -94,6 +97,12 @@ def main(_argv=None):
         "--debug",
         action="store_true",
         help="add debug output",
+    )
+    parser.add_argument(
+        "-b",
+        "--badges",
+        action="store_true",
+        help="create and output standard README.md badges markup",
     )
     parser.add_argument(
         "-e",

@@ -3,7 +3,11 @@
 @author: wf
 """
 
+from argparse import Namespace
+
+from osprojects.check_project import CheckProject
 from osprojects.osproject import Commit, OsProject, Ticket, gitlog2wiki, main
+
 from tests.basetest import BaseTest
 
 
@@ -28,6 +32,23 @@ class TestOsProject(BaseTest):
         self.assertEqual(ticket2.url, sampleTicket.url)
         self.assertEqual(ticket2.project, sampleTicket.project)
         pass
+
+    def testBadgeMarkdown(self):
+        """Tests badge markdown generation."""
+        osProject = OsProject(owner="WolfgangFahl", project_id="pyOpenSourceProjects")
+
+        args = Namespace(badges=True, debug=False, editor=False)
+        checker = CheckProject(parent=None, project=osProject, args=args)
+        checker.project_name = "pyOpenSourceProjects"
+
+        markup = checker.generate_badge_markdown()
+
+        self.assertIn("| **PyPi** |", markup)
+        self.assertIn("| **GitHub** |", markup)
+        self.assertIn("| **Code** |", markup)
+        self.assertIn("| **Docs** |", markup)
+        self.assertIn("[![PyPI Status]", markup)
+        self.assertIn("WolfgangFahl/pyOpenSourceProjects", markup)
 
     def testGetCommits(self):
         """Tests extraction of commits for a repository."""
