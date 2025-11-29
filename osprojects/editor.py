@@ -1,5 +1,4 @@
-"""
-Created on 2022-11-27
+"""Created on 2022-11-27.
 
 @author: wf
 """
@@ -15,10 +14,10 @@ from bs4 import BeautifulSoup
 
 
 class Editor:
-    """
-    helper class to open the system defined editor
+    """Helper class to open the system defined editor.
 
-    see https://stackoverflow.com/questions/1442841/lauch-default-editor-like-webbrowser-module
+    see
+    https://stackoverflow.com/questions/1442841/lauch-default-editor-like-webbrowser-module
     """
 
     @classmethod
@@ -32,8 +31,7 @@ class Editor:
 
     @classmethod
     def extract_text(cls, html_text: str) -> str:
-        """
-        extract the text from the given html_text
+        """Extract the text from the given html_text.
 
         Args:
             html_text(str): the input for the html text
@@ -65,8 +63,7 @@ class Editor:
         extract_text: bool = True,
         default_editor_cmd: str = "/usr/local/bin/atom",
     ) -> str:
-        """
-        open an editor for the given file_source
+        """Open an editor for the given file_source.
 
         Args:
             file_source(str): the path to the file
@@ -104,8 +101,7 @@ class Editor:
 
     @classmethod
     def open_tmp_text(cls, text: str, file_name: str = None) -> str:
-        """
-        open an editor for the given text in a newly created temporary file
+        """Open an editor for the given text in a newly created temporary file.
 
         Args:
             text(str): the text to write to a temporary file and then open

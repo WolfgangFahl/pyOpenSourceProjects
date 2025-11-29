@@ -1,5 +1,4 @@
-"""
-Created on 2024-08-27
+"""Created on 2024-08-27.
 
 @author: wf
 """
@@ -12,18 +11,15 @@ from tests.basetest import BaseTest
 
 
 class TestGitHubApi(BaseTest):
-    """
-    test the GithHubApi functionalities
-    """
+    """Test the GithHubApi functionalities."""
 
     def setUp(self, debug=False, profile=True):
         BaseTest.setUp(self, debug=debug, profile=profile)
         self.github = GitHubApi.get_instance()
 
     def test_repos_for_owner(self):
-        """
-        Test the repos_for_owner method for two owners, with caching in between.
-        """
+        """Test the repos_for_owner method for two owners, with caching in
+        between."""
         owners = ["WolfgangFahl", "BITPlan"]
         cache_expiry = 300  # 5 minutes
 
@@ -45,9 +41,7 @@ class TestGitHubApi(BaseTest):
 
     @unittest.skipIf(BaseTest.inPublicCI(), "missing admin rights in public CI")
     def test_github_action_from_url(self):
-        """
-        Test creating GitHubAction instances from URLs.
-        """
+        """Test creating GitHubAction instances from URLs."""
         test_cases = [
             (
                 "single_failure",

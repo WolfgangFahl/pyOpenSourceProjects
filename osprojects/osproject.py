@@ -1,5 +1,4 @@
-"""
-Created on 2022-01-24
+"""Created on 2022-01-24.
 
 @author: wf
 """
@@ -21,9 +20,7 @@ from osprojects.github_api import GitHubApi, GitHubRepo
 
 
 class Ticket(object):
-    """
-    a Ticket
-    """
+    """A Ticket."""
 
     @staticmethod
     def getSamples():
@@ -46,18 +43,14 @@ class Ticket(object):
 
     @classmethod
     def init_from_dict(cls, **records):
-        """
-        inits Ticket from given args
-        """
+        """Inits Ticket from given args."""
         issue = Ticket()
         for k, v in records.items():
             setattr(issue, k, v)
         return issue
 
     def toWikiMarkup(self) -> str:
-        """
-        Returns Ticket in wiki markup
-        """
+        """Returns Ticket in wiki markup."""
         return f"""# {{{{Ticket
 |number={self.number}
 |title={self.title}
@@ -69,9 +62,7 @@ class Ticket(object):
 
 
 class Commit(object):
-    """
-    a commit
-    """
+    """A commit."""
 
     @staticmethod
     def getSamples():
@@ -89,9 +80,7 @@ class Commit(object):
         return samples
 
     def toWikiMarkup(self):
-        """
-        Returns Commit as wiki markup
-        """
+        """Returns Commit as wiki markup."""
         params = [
             f"{attr}={getattr(self, attr, '')}" for attr in self.getSamples()[0].keys()
         ]
@@ -100,14 +89,10 @@ class Commit(object):
 
 
 class OsProjects:
-    """
-    a set of open source projects
-    """
+    """A set of open source projects."""
 
     def __init__(self):
-        """
-        constructor
-        """
+        """constructor."""
         self.projects = {}
         self.projects_by_url = {}
         self.local_projects = {}
@@ -124,8 +109,7 @@ class OsProjects:
             self.selected_projects[project.projectUrl()] = project
 
     def select_projects(self, owners=None, project_id=None, local_only=False):
-        """
-        Select projects based on given criteria.
+        """Select projects based on given criteria.
 
         Args:
             owners (Optional[list[str]]): The owners of the projects to select.
@@ -169,8 +153,7 @@ class OsProjects:
         return self.selected_projects
 
     def filter_projects(self, language=None, local_only=False):
-        """
-        Filter the selected projects based on language and locality.
+        """Filter the selected projects based on language and locality.
 
         Args:
             language (str, optional): The programming language to filter by.
@@ -197,9 +180,7 @@ class OsProjects:
         return self.selected_projects
 
     def add_projects_of_owner(self, owner: str, cache_expiry: int = 300):
-        """
-        add the projects of the given owner
-        """
+        """Add the projects of the given owner."""
         if not owner in self.projects:
             self.projects[owner] = {}
             repo_infos = self.github.repos_for_owner(owner, cache_expiry)
@@ -222,8 +203,7 @@ class OsProjects:
 
     @classmethod
     def get_project_url_from_git_config(cls, project_path: str) -> Optional[str]:
-        """
-        Get the project URL from the git config file.
+        """Get the project URL from the git config file.
 
         Args:
             project_path (str): The path to the project directory.
@@ -248,8 +228,7 @@ class OsProjects:
 
     @classmethod
     def from_folder(cls, folder_path: str, with_progress: bool = False) -> "OsProjects":
-        """
-        Collect all github projects from the given folders.
+        """Collect all github projects from the given folders.
 
         Args:
             folder_path (str): The path to the folder containing projects.
@@ -285,8 +264,7 @@ class OsProjects:
     def github_repos_of_folder(
         cls, folder_path: str
     ) -> Tuple[Set[str], Dict[str, GitHubRepo]]:
-        """
-        Collect GitHub repositories from a given folder.
+        """Collect GitHub repositories from a given folder.
 
         Args:
             folder_path (str): The path to the folder to search for repositories.
@@ -316,9 +294,7 @@ class OsProjects:
 
 
 class OsProject:
-    """
-    a GitHub based opens source project
-    """
+    """A GitHub based opens source project."""
 
     def __init__(self, owner: str = None, project_id: str = None):
         self.repo_info = None  # might be fetched
@@ -328,9 +304,7 @@ class OsProject:
 
     @classmethod
     def fromUrl(cls, url: str) -> "OsProject":
-        """
-        Init OsProject from given url
-        """
+        """Init OsProject from given url."""
         if "github.com" in url:
             os_project = cls()
             os_project.repo = GitHubRepo.from_url(url)
@@ -340,9 +314,7 @@ class OsProject:
 
     @classmethod
     def fromRepo(cls):
-        """
-        Init OsProject from repo in current working directory
-        """
+        """Init OsProject from repo in current working directory."""
         url = subprocess.check_output(["git", "config", "--get", "remote.origin.url"])
         url = url.decode().strip("\n")
         repo= cls.fromUrl(url)
@@ -402,9 +374,7 @@ class OsProject:
         return tickets_dict
 
     def getComments(self, issue_number: int) -> List[dict]:
-        """
-        Fetch all comments for a specific issue number from GitHub.
-        """
+        """Fetch all comments for a specific issue number from GitHub."""
         comments_url = self.commentUrl(issue_number)
         response = self.get_response("fetch comments", comments_url)
         return response.json()
@@ -416,9 +386,7 @@ class OsProject:
         return f"{self.projectUrl()}/commit/{commit_id}"
 
     def commentUrl(self, issue_number: int):
-        """
-        Construct the URL for accessing comments of a specific issue.
-        """
+        """Construct the URL for accessing comments of a specific issue."""
         return f"{self.repo.github.api_url}/repos/{self.repo.owner}/{self.repo.project_id}/issues/{issue_number}/comments"
 
     @property
@@ -530,9 +498,7 @@ class OsProject:
 
 
 def gitlog2wiki(_argv=None):
-    """
-    cmdline interface to get gitlog entries in wiki markup
-    """
+    """Cmdline interface to get gitlog entries in wiki markup."""
     parser = argparse.ArgumentParser(description="gitlog2wiki")
     if _argv:
         _args = parser.parse_args(args=_argv)
@@ -543,9 +509,7 @@ def gitlog2wiki(_argv=None):
 
 
 def main(_argv=None):
-    """
-    main command line entry point
-    """
+    """Main command line entry point."""
     parser = argparse.ArgumentParser(description="Issue2ticket")
     parser.add_argument("-o", "--owner", help="project owner")
     parser.add_argument("-p", "--project", help="name of the project")

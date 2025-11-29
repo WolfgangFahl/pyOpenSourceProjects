@@ -1,5 +1,4 @@
-"""
-Created on 2024-08-27
+"""Created on 2024-08-27.
 
 @author: wf
 """
@@ -25,17 +24,13 @@ class GitHubApi:
 
     @classmethod
     def get_instance(cls) -> "GitHubApi":
-        """
-        singleton access
-        """
+        """Singleton access."""
         if cls.githubapi_instance is None:
             cls.githubapi_instance = cls()
         return cls.githubapi_instance
 
     def __init__(self):
-        """
-        constructor
-        """
+        """constructor."""
         home_dir = os.path.expanduser("~")
         self.base_dir = os.path.join(home_dir, ".github")
         os.makedirs(self.base_dir, exist_ok=True)
@@ -50,9 +45,8 @@ class GitHubApi:
         self.api_url = "https://api.github.com"
 
     def load_access_token(self) -> str:
-        """
-        if $HOME/.github/access_token.json exists read the token from there
-        """
+        """If $HOME/.github/access_token.json exists read the token from
+        there."""
         # Specify the path to the access token file
         token_file_path = os.path.join(self.base_dir, "access_token.json")
 
@@ -66,8 +60,7 @@ class GitHubApi:
         return None
 
     def get_response(self, title: str, url: str, params={}, allow_redirects=True):
-        """
-        Get response from GitHub API or Google Docs API
+        """Get response from GitHub API or Google Docs API.
 
         Args:
             title (str): Description of the request
@@ -95,8 +88,8 @@ class GitHubApi:
         return response
 
     def repos_for_owner(self, owner: str, cache_expiry: int = 300) -> list[dict]:
-        """
-        Retrieve all repositories for the given owner, using cache if available and valid, or via API otherwise.
+        """Retrieve all repositories for the given owner, using cache if
+        available and valid, or via API otherwise.
 
         This method first checks if the repository data is available in the cache. If not, it fetches the
         data from the GitHub API and caches it for future use.
@@ -129,8 +122,7 @@ class GitHubApi:
     def repos_for_owner_from_cache(
         self, owner: str
     ) -> tuple[str, list[dict] | None, float | None]:
-        """
-        Retrieve repositories for the given owner from the cache.
+        """Retrieve repositories for the given owner from the cache.
 
         Args:
             owner (str): The username of the owner whose repositories are being retrieved.
@@ -154,8 +146,8 @@ class GitHubApi:
         return cache_file, cache_content, cache_age
 
     def repos_for_owner_via_api(self, owner: str) -> list[dict]:
-        """
-        Retrieve all repositories for the given owner directly from the GitHub API.
+        """Retrieve all repositories for the given owner directly from the
+        GitHub API.
 
         Args:
             owner (str): The username of the owner whose repositories are being retrieved.
@@ -187,8 +179,7 @@ class GitHubApi:
 
 @dataclass
 class GitHubRepo:
-    """
-    Represents a GitHub Repository
+    """Represents a GitHub Repository.
 
     Attributes:
         owner (str): The owner of the repository.
@@ -203,8 +194,7 @@ class GitHubRepo:
 
     @classmethod
     def from_url(cls, url: str) -> (str, str):
-        """
-        Resolve project url to owner and project name
+        """Resolve project url to owner and project name.
 
         Returns:
             (owner, project)
@@ -257,8 +247,8 @@ class GitHubRepo:
 
 @dataclass
 class GitHubAction:
-    """
-    Represents a GitHub Action with its identifying information and log content.
+    """Represents a GitHub Action with its identifying information and log
+    content.
 
     Attributes:
         repo (GitHubRepo): The repository associated with this action.
@@ -287,8 +277,8 @@ class GitHubAction:
 
     @classmethod
     def from_url(cls, url: str) -> "GitHubAction":
-        """
-        Create a GitHubAction instance from a GitHub Actions URL and fetch its logs.
+        """Create a GitHubAction instance from a GitHub Actions URL and fetch
+        its logs.
 
         Args:
             url (str): The GitHub Actions URL.
@@ -313,8 +303,7 @@ class GitHubAction:
 
     @classmethod
     def get_latest_workflow_run(cls, project):
-        """
-        Get the latest GitHub Actions workflow run for a given project.
+        """Get the latest GitHub Actions workflow run for a given project.
 
         Args:
             project (OsProject): The project to check for the latest workflow run.
@@ -331,9 +320,7 @@ class GitHubAction:
         return run
 
     def fetch_logs(self):
-        """
-        Fetch the logs for this GitHub Action.
-        """
+        """Fetch the logs for this GitHub Action."""
         if self.log_content is None:
             api_url = f"https://api.github.com/repos/{self.repo.owner}/{self.repo.project_id}/actions/jobs/{self.job_id}/logs"
             log_response = self.repo.github.get_response(
@@ -344,9 +331,7 @@ class GitHubAction:
                 self.save_logs()
 
     def save_logs(self):
-        """
-        Save the log content to a local file.
-        """
+        """Save the log content to a local file."""
         if self.log_content is None:
             raise ValueError("No log content to save. Make sure to fetch logs first.")
         with open(self.log_file, "w", encoding="utf-8") as f:

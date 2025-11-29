@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-"""
-Created on 2024-07-30
+"""Created on 2024-07-30.
 
 @author: wf
 """
@@ -15,9 +14,7 @@ from osprojects.osproject import OsProjects
 
 
 class CheckOS:
-    """
-    checker for a set of open source projects
-    """
+    """Checker for a set of open source projects."""
 
     def __init__(
         self, args: Namespace, osprojects: OsProjects, max_python_version_minor=12
@@ -67,9 +64,8 @@ class CheckOS:
             self.osprojects.filter_projects(local_only=True)
 
     def check_projects(self):
-        """
-        Select, filter, and check all projects based on the provided arguments.
-        """
+        """Select, filter, and check all projects based on the provided
+        arguments."""
         self.select_projects()
         self.filter_projects()
 
@@ -91,9 +87,7 @@ class CheckOS:
 
 
 def main(_argv=None):
-    """
-    main command line entry point
-    """
+    """Main command line entry point."""
     parser = argparse.ArgumentParser(description="Check open source projects")
     parser.add_argument(
         "-d",

@@ -1,5 +1,4 @@
-"""
-Created on 2024-08-28
+"""Created on 2024-08-28.
 
 @author: wf
 """
@@ -42,9 +41,7 @@ class Check:
 
 
 class CheckProject:
-    """
-    Checker for an individual open source project
-    """
+    """Checker for an individual open source project."""
 
     def __init__(self, parent, project, args):
         self.parent = parent
@@ -106,9 +103,7 @@ class CheckProject:
         return local
 
     def check_github_workflows(self):
-        """
-        check the github workflow files
-        """
+        """Check the github workflow files."""
         workflows_path = os.path.join(self.project_path, ".github", "workflows")
         workflows_exist = self.add_path_check(workflows_path)
 
@@ -231,9 +226,7 @@ class CheckProject:
             )
 
     def check_pyproject_toml(self) -> bool:
-        """
-        pyproject.toml
-        """
+        """pyproject.toml."""
         toml_path = os.path.join(self.project_path, "pyproject.toml")
         toml_exists = self.add_path_check(toml_path)
         if toml_exists.ok:
@@ -274,8 +267,7 @@ class CheckProject:
         return toml_exists.ok
 
     def check_git(self) -> bool:
-        """
-        Check git repository information using GitHub class
+        """Check git repository information using GitHub class.
 
         Returns:
             bool: True if git owner matches project owner and the repo is not a fork
@@ -335,9 +327,7 @@ class CheckProject:
         return owner_match and not is_fork
 
     def check(self, title: str):
-        """
-        Check the given project and print results
-        """
+        """Check the given project and print results."""
         self.check_local()
         self.check_git()
         if self.check_pyproject_toml():

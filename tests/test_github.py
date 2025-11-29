@@ -1,5 +1,4 @@
-"""
-Created on 2024-08-27
+"""Created on 2024-08-27.
 
 @author: wf
 """
@@ -12,17 +11,13 @@ from tests.basetest import BaseTest
 
 
 class TestGitHub(BaseTest):
-    """
-    tests GitHub class
-    """
+    """Tests GitHub class."""
 
     def setUp(self, debug=True, profile=True):
         BaseTest.setUp(self, debug=debug, profile=profile)
 
     def test_GitHubRepo_from_url(self):
-        """
-        tests the creating GitHubRepos from the project url
-        """
+        """Tests the creating GitHubRepos from the project url."""
         urlCases = [
             {
                 "owner": "WolfgangFahl",
@@ -49,9 +44,7 @@ class TestGitHub(BaseTest):
                 self.assertEqual(expectedProject, github_repo.project_id)
 
     def testOsProjects(self):
-        """
-        tests the list_projects_as_os_projects method
-        """
+        """Tests the list_projects_as_os_projects method."""
         owner = "WolfgangFahl"
         project_id = "pyOpenSourceProjects"
         osprojects = OsProjects.from_owners([owner])
@@ -105,9 +98,7 @@ class TestGitHub(BaseTest):
         "Tests querying wikidata which is often blocked on public CI",
     )
     def test_projects_from_folder(self):
-        """
-        test projects from a specific folder
-        """
+        """Test projects from a specific folder."""
         debug = self.debug
         # debug=True
         home_dir = os.path.expanduser("~")

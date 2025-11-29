@@ -1,5 +1,4 @@
-"""
-Created on 2021-08-19
+"""Created on 2021-08-19.
 
 @author: wf
 """
@@ -15,14 +14,10 @@ from unittest import TestCase
 
 
 class BaseTest(TestCase):
-    """
-    base test case
-    """
+    """Base test case."""
 
     def setUp(self, debug=False, profile=True):
-        """
-        setUp test environment
-        """
+        """SetUp test environment."""
         TestCase.setUp(self)
         self.debug = debug
         self.profile = profile
@@ -35,9 +30,7 @@ class BaseTest(TestCase):
 
     @staticmethod
     def inPublicCI():
-        """
-        are we running in a public Continuous Integration Environment?
-        """
+        """Are we running in a public Continuous Integration Environment?"""
         publicCI = getpass.getuser() in ["travis", "runner"]
         jenkins = "JENKINS_HOME" in os.environ
         return publicCI or jenkins
@@ -71,8 +64,7 @@ class BaseTest(TestCase):
 
     @staticmethod
     def captureOutput(fn: Callable, *args, **kwargs) -> str:
-        """
-        Captures stdout put of the given function
+        """Captures stdout put of the given function.
 
         Args:
             fn(callable): function to call
@@ -93,13 +85,10 @@ if __name__ == "__main__":
 
 
 class Profiler:
-    """
-    simple profiler
-    """
+    """Simple profiler."""
 
     def __init__(self, msg, profile=True):
-        """
-        construct me with the given msg and profile active flag
+        """Construct me with the given msg and profile active flag.
 
         Args:
             msg(str): the message to show if profiling is active
@@ -112,9 +101,7 @@ class Profiler:
             print(f"Starting {msg} ...")
 
     def time(self, extraMsg=""):
-        """
-        time the action and print if profile is active
-        """
+        """Time the action and print if profile is active."""
         elapsed = time.time() - self.starttime
         if self.profile:
             print(f"{self.msg}{extraMsg} took {elapsed:5.1f} s")
