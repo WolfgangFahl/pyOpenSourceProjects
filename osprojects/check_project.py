@@ -12,10 +12,9 @@ from git import Repo
 from git.exc import InvalidGitRepositoryError, NoSuchPathError
 from packaging import version
 
-from osprojects.github_api import GitHubAction
-
 # original at ngwidgets - use redundant local copy ...
 from osprojects.editor import Editor
+from osprojects.github_api import GitHubAction
 
 
 @dataclass

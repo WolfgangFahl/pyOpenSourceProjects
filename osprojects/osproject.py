@@ -317,7 +317,7 @@ class OsProject:
         """Init OsProject from repo in current working directory."""
         url = subprocess.check_output(["git", "config", "--get", "remote.origin.url"])
         url = url.decode().strip("\n")
-        repo= cls.fromUrl(url)
+        repo = cls.fromUrl(url)
         return repo
 
     def getIssues(self, limit: int = None, **params) -> List[Ticket]:
