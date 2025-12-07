@@ -3,10 +3,12 @@
 @author: wf
 """
 
+import os
 import time
 import unittest
 
-from osprojects.github_api import GitHubAction, GitHubApi
+from osprojects.github_api import GitHubAction, GitHubApi, GitHubFileSet
+
 from tests.basetest import BaseTest
 
 
@@ -38,6 +40,41 @@ class TestGitHubApi(BaseTest):
                     self.assertEqual(
                         repos[0], repos[trial], f"Cache was not used for {owner}"
                     )
+
+
+    # @unittest.skip
+    def test_github_cff(self):
+        """
+        Retrieves 1000 cff files via untargeted search
+        """
+        github_api=GitHubApi.get_instance()
+        yaml_file=github_api.get_cache_path("git_cff_fileset1000.yaml")
+        query = "filename:CITATION.cff"
+
+        file_set = None
+
+        # Check if cache exists
+        if os.path.isfile(yaml_file):
+            print(f"Loading cached file set from: {yaml_file}")
+            # Ensure your class has a load_from_yaml_file or similar method (standard for lod_storable)
+            file_set = GitHubFileSet.load_from_yaml_file(yaml_file) # @UndefinedVariable
+        else:
+            print(f"Cache not found. Querying GitHub API: {query}")
+            try:
+                # Limit max_results if your code supports it to prevent future 403s on fresh runs
+                file_set = GitHubFileSet.from_query(query, verbose=True)
+                file_set.save_to_yaml_file(yaml_file)
+            except Exception as e:
+                print(f"Warning: API fetch failed or was incomplete: {e}")
+                # If the file was partially created/in-memory before crash,
+                # you might handle partial saves here, but usually we just fail the test
+                # or rely on whatever logic wrote the file before the crash.
+
+        # Assertions to ensure we actually have data
+        self.assertIsNotNone(file_set)
+        # Check if we have files (based on your wc -l output, you expect ~1000)
+        print(f"Files loaded: {len(file_set.files)}")
+        self.assertGreater(len(file_set.files), 0)
 
     @unittest.skipIf(BaseTest.inPublicCI(), "missing admin rights in public CI")
     def test_github_action_from_url(self):

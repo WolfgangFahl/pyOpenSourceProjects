@@ -1,17 +1,30 @@
 """Created on 2024-08-27.
 
 @author: wf
+
+Request limits
+see https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api?apiVersion=2022-11-28
+
+    Authenticated Requests (Core API): 5,000 requests per hour.
+    Unauthenticated Requests (Core API): 60 requests per hour.
+    Search API (Authenticated): 30 requests per minute.
+    Search API (Unauthenticated): 10 requests per minute.
+
 """
 
+from dataclasses import dataclass, field
+from datetime import datetime
 import json
 import os
 import re
 import time
-from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
+from basemkit.yamlable import lod_storable
 import requests
+from backoff import on_exception, expo
+from ratelimit import limits, RateLimitException
 
 
 class GitHubApi:
@@ -31,8 +44,8 @@ class GitHubApi:
 
     def __init__(self):
         """constructor."""
-        home_dir = os.path.expanduser("~")
-        self.base_dir = os.path.join(home_dir, ".github")
+        self.home_dir = os.path.expanduser("~")
+        self.base_dir = os.path.join(self.home_dir, ".github")
         os.makedirs(self.base_dir, exist_ok=True)
         self.cache_dir = os.path.join(self.base_dir, "cache")
         os.makedirs(self.cache_dir, exist_ok=True)
@@ -44,21 +57,30 @@ class GitHubApi:
         )
         self.api_url = "https://api.github.com"
 
+    def get_cache_path(self,file_name:str):
+        """
+        get the cache path for the given file_name
+        """
+        cache_path = os.path.join(self.cache_dir,file_name)
+        return cache_path
+
     def load_access_token(self) -> str:
         """If $HOME/.github/access_token.json exists read the token from
         there."""
         # Specify the path to the access token file
         token_file_path = os.path.join(self.base_dir, "access_token.json")
-
+        token=None
         # Check if the file exists and read the token
         if os.path.exists(token_file_path):
             with open(token_file_path, "r") as token_file:
                 token_data = json.load(token_file)
-                return token_data.get("access_token")
+                token= token_data.get("access_token")
 
         # Return None if no token file is found
-        return None
+        return token
 
+    @on_exception(expo, RateLimitException, max_tries=8)
+    @limits(calls=5000, period=3600)
     def get_response(self, title: str, url: str, params={}, allow_redirects=True):
         """Get response from GitHub API or Google Docs API.
 
@@ -83,9 +105,13 @@ class GitHubApi:
             err_msg = (
                 f"Failed to {title} for {url}: {response.status_code} - {response.text}"
             )
+            # Raise RateLimitException explicitly if server returns 429 or 403 to trigger backoff
+            if response.status_code in [403, 429]:
+                raise RateLimitException(err_msg, period_remaining=60)
             raise Exception(err_msg)
 
         return response
+
 
     def repos_for_owner(self, owner: str, cache_expiry: int = 300) -> list[dict]:
         """Retrieve all repositories for the given owner, using cache if
@@ -244,6 +270,121 @@ class GitHubRepo:
                 params["page"] += 1
         return all_issues_records
 
+@lod_storable
+class GitHubFile:
+    """
+    a single Github file
+    """
+    repo_name: str
+    path: str
+    sha: str
+    html_url: str
+    # Note: Code Search API does not return a date.
+    # We add this field here so it can be populated later if we do specific lookups.
+    created_at: Optional[datetime] = None
+
+    @property
+    def month_key(self) -> str:
+        """Returns 'YYYY-MM' or 'Unknown'."""
+        month_key=None
+        if self.created_at:
+            month_key=self.created_at.strftime("%Y-%m")
+        return  month_key
+
+@lod_storable
+class GitHubFileSet:
+    """
+    A set of GitHubFiles
+    """
+    # map files by sha
+    files: Dict[str,GitHubFile] = field(default_factory=dict)
+    _sha_set: set = field(default_factory=set)
+
+    def add(self, api_item: dict) -> Optional[GitHubFile]:
+        """
+        Parses a raw API item and adds it to cache if unique.
+        Returns the item if added, None if duplicate.
+        """
+        gh_file=None
+        sha = api_item.get("sha")
+
+        # Deduplication check
+        if sha and not sha in self._sha_set:
+
+            # Extract fields
+            repo_info = api_item.get("repository", {})
+
+            # Attempt to find date (usually not in search/code results, but parsing if present)
+            date_obj = None
+            raw_date = repo_info.get("created_at")
+            if raw_date:
+                try:
+                    date_obj = datetime.fromisoformat(raw_date.replace('Z', '+00:00'))
+                except ValueError:
+                    pass
+
+            # Create the instance
+            gh_file = GitHubFile(
+                repo_name=repo_info.get("full_name", "unknown/repo"),
+                path=api_item.get("path", ""),
+                sha=sha,
+                html_url=api_item.get("html_url", ""),
+                created_at=date_obj
+            )
+
+            # Store in dict
+            self.files[sha] = gh_file
+            self._sha_set.add(sha)
+
+        return gh_file
+
+    @classmethod
+    def from_query(cls,query: str, limit: int = 1000, verbose:bool=False) -> "GitHubFileSet":
+        """
+       Factory function to query GitHub Code Search and populate a GitHubFileSet.
+        Handles pagination and rate limiting.
+        """
+        github_api=GitHubApi.get_instance()
+        file_set = GitHubFileSet()
+        per_page = 100
+
+        # Calculate max pages (API usually limits code search results to 1000)
+        max_pages = (limit // per_page) + 1
+
+        if verbose:
+            print(f"Searching up to {limit} files for query: {query}")
+
+        for page in range(1, max_pages + 1):
+            if len(file_set.files) >= limit:
+                break
+
+            url = "https://api.github.com/search/code"
+            params = {
+                "q": query,
+                "per_page": per_page,
+                "page": page
+            }
+
+            try:
+                # Using the existing github_api instance passed in
+                response = github_api.get_response("search code", url, params=params)
+                search_data = response.json()
+
+                items = search_data.get("items", [])
+                if not items:
+                    break
+
+                for item in items:
+                    file_set.add(item)
+
+                # Sleep to respect rate limits
+                time.sleep(2.0)
+
+            except Exception as e:
+                print(f"Error fetching page {page}: {e}")
+                break
+
+        return file_set
 
 @dataclass
 class GitHubAction:
