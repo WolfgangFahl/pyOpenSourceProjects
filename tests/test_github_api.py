@@ -42,7 +42,7 @@ class TestGitHubApi(BaseTest):
                     )
 
 
-    # @unittest.skip
+    @unittest.skipIf(BaseTest.inPublicCI(), "Must be authenticated to access the code search API")
     def test_github_cff(self):
         """
         Retrieves cff files via untargeted search
