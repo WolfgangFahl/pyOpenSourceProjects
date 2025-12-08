@@ -45,10 +45,14 @@ class TestGitHubApi(BaseTest):
     # @unittest.skip
     def test_github_cff(self):
         """
-        Retrieves 1000 cff files via untargeted search
+        Retrieves cff files via untargeted search
         """
+        limit=100 if self.inPublicCI() else 1000;
+        debug=self.debug
+        debug=True
+        verbose=True
         github_api=GitHubApi.get_instance()
-        yaml_file=github_api.get_cache_path("git_cff_fileset1000.yaml")
+        yaml_file=github_api.get_cache_path(f"git_cff_fileset{limit}.yaml")
         query = "filename:CITATION.cff"
 
         file_set = None
@@ -62,7 +66,7 @@ class TestGitHubApi(BaseTest):
             print(f"Cache not found. Querying GitHub API: {query}")
             try:
                 # Limit max_results if your code supports it to prevent future 403s on fresh runs
-                file_set = GitHubFileSet.from_query(query, verbose=True)
+                file_set = GitHubFileSet.from_query(query, verbose=verbose)
                 file_set.save_to_yaml_file(yaml_file)
             except Exception as e:
                 print(f"Warning: API fetch failed or was incomplete: {e}")
@@ -73,7 +77,8 @@ class TestGitHubApi(BaseTest):
         # Assertions to ensure we actually have data
         self.assertIsNotNone(file_set)
         # Check if we have files (based on your wc -l output, you expect ~1000)
-        print(f"Files loaded: {len(file_set.files)}")
+        if debug:
+            print(f"github CFF File references loaded: {len(file_set.files)}")
         self.assertGreater(len(file_set.files), 0)
 
     @unittest.skipIf(BaseTest.inPublicCI(), "missing admin rights in public CI")
