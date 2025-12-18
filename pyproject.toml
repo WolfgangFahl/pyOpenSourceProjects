@@ -4,6 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pyOpenSourceProjects"
+description ="Check python OpenSource Projects to follow standards for README, github workflow and pyprojec.toml - creates badges"
 
 authors = [
   { name = "Wolfgang Fahl", email = "wf@bitplan.com" }
@@ -35,10 +36,11 @@ dependencies = [
   # https://pypi.org/project/backoff/
   "backoff"
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 
 classifiers = [
   "Programming Language :: Python",
+  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13"
