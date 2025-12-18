@@ -290,7 +290,7 @@ class CheckProject:
 
     def check_pyproject_toml_py310(self) -> bool:
         """Python 3.10 implementation (uses third-party tomli)."""
-        import tomli as tomllib
+        import tomli as tomllib # @UnresolvedImport
         return self._check_pyproject_toml_impl(tomllib)
 
     def check_pyproject_toml(self) -> bool:
