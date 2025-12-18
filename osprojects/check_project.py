@@ -4,7 +4,7 @@
 """
 
 import os
-import tomllib
+import sys
 from dataclasses import dataclass
 from typing import List
 
@@ -240,13 +240,15 @@ class CheckProject:
                 readme_content, "readthedocs", readme_path, negative=True
             )
 
-    def check_pyproject_toml(self) -> bool:
-        """pyproject.toml."""
+    def _check_pyproject_toml(self,toml_module) -> bool:
+        """
+        check pyproject.toml using the given toml_module
+        """
         toml_path = os.path.join(self.project_path, "pyproject.toml")
         toml_exists = self.add_path_check(toml_path)
         if toml_exists.ok:
             content = toml_exists.content
-            toml_dict = tomllib.loads(content)
+            toml_dict = toml_module.loads(content)
             project_check = self.add_check(
                 "project" in toml_dict, "[project]", toml_path
             )
@@ -280,6 +282,22 @@ class CheckProject:
                 content, "[tool.hatch.build.targets.wheel.sources]", toml_path
             )
         return toml_exists.ok
+
+    def check_pyproject_toml_py311(self) -> bool:
+        """Python 3.11+ implementation (uses stdlib tomllib)."""
+        import tomllib
+        return self._check_pyproject_toml_impl(tomllib)
+
+    def check_pyproject_toml_py310(self) -> bool:
+        """Python 3.10 implementation (uses third-party tomli)."""
+        import tomli as tomllib
+        return self._check_pyproject_toml_impl(tomllib)
+
+    def check_pyproject_toml(self) -> bool:
+        """Delegator that picks the correct implementation based on Python version."""
+        if sys.version_info >= (3, 11):
+            return self.check_pyproject_toml_py311()
+        return self.check_pyproject_toml_py310()
 
     def check_git(self) -> bool:
         """Check git repository information using GitHub class.
