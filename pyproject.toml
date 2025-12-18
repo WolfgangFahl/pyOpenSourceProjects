@@ -46,7 +46,7 @@ classifiers = [
   "Programming Language :: Python :: 3.13"
 ]
 
-dynamic = ["version", "description"]
+dynamic = ["version"]
 
 [project.urls]
 Home = "https://github.com/WolfgangFahl/pyOpenSourceProjects"
