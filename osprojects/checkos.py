@@ -77,7 +77,6 @@ class CheckOS:
             if self.args.badges:
                 print(checker.generate_badge_markdown())
 
-
     def handle_exception(self, ex: Exception):
         CheckOS.show_exception(ex, self.args.debug)
 

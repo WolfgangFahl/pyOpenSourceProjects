@@ -103,15 +103,13 @@ class CheckProject:
         owner = self.project.owner
         project_id = self.project.project_id
 
-        markup= f"""| | |
+        markup = f"""| | |
     | :--- | :--- |
     | **PyPi** | [![PyPI Status](https://img.shields.io/pypi/v/{project_name}.svg)](https://pypi.python.org/pypi/{project_name}/) [![License](https://img.shields.io/github/license/{owner}/{project_id}.svg)](https://www.apache.org/licenses/LICENSE-2.0) [![pypi](https://img.shields.io/pypi/pyversions/{project_name})](https://pypi.org/project/{project_name}/) [![format](https://img.shields.io/pypi/format/{project_name})](https://pypi.org/project/{project_name}/) [![downloads](https://img.shields.io/pypi/dd/{project_name})](https://pypi.org/project/{project_name}/) |
     | **GitHub** | [![Github Actions Build](https://github.com/{owner}/{project_id}/actions/workflows/build.yml/badge.svg)](https://github.com/{owner}/{project_id}/actions/workflows/build.yml) [![Release](https://img.shields.io/github/v/release/{owner}/{project_id})](https://github.com/{owner}/{project_id}/releases) [![Contributors](https://img.shields.io/github/contributors/{owner}/{project_id})](https://github.com/{owner}/{project_id}/graphs/contributors) [![Last Commit](https://img.shields.io/github/last-commit/{owner}/{project_id})](https://github.com/{owner}/{project_id}/commits/) [![GitHub issues](https://img.shields.io/github/issues/{owner}/{project_id}.svg)](https://github.com/{owner}/{project_id}/issues) [![GitHub closed issues](https://img.shields.io/github/issues-closed/{owner}/{project_id}.svg)](https://github.com/{owner}/{project_id}/issues/?q=is%3Aissue+is%3Aclosed) |
     | **Code** | [![style-black](https://img.shields.io/badge/%20style-black-000000.svg)](https://github.com/psf/black) [![imports-isort](https://img.shields.io/badge/%20imports-isort-%231674b1)](https://pycqa.github.io/isort/) |
     | **Docs** | [![API Docs](https://img.shields.io/badge/API-Documentation-blue)](https://{owner}.github.io/{project_id}/) [![formatter-docformatter](https://img.shields.io/badge/%20formatter-docformatter-fedcba.svg)](https://github.com/PyCQA/docformatter) [![style-google](https://img.shields.io/badge/%20style-google-3666d6.svg)](https://google.github.io/styleguide/pyguide.html#s3.8-comments-and-docstrings) |"""
         return markup
-
-
 
     def check_local(self) -> Check:
         local = Check.file_exists(self.project_path)
@@ -240,10 +238,8 @@ class CheckProject:
                 readme_content, "readthedocs", readme_path, negative=True
             )
 
-    def _check_pyproject_toml(self,toml_module) -> bool:
-        """
-        check pyproject.toml using the given toml_module
-        """
+    def _check_pyproject_toml(self, toml_module) -> bool:
+        """Check pyproject.toml using the given toml_module."""
         toml_path = os.path.join(self.project_path, "pyproject.toml")
         toml_exists = self.add_path_check(toml_path)
         if toml_exists.ok:
@@ -286,15 +282,18 @@ class CheckProject:
     def check_pyproject_toml_py311(self) -> bool:
         """Python 3.11+ implementation (uses stdlib tomllib)."""
         import tomllib
+
         return self._check_pyproject_toml_impl(tomllib)
 
     def check_pyproject_toml_py310(self) -> bool:
         """Python 3.10 implementation (uses third-party tomli)."""
-        import tomli as tomllib # @UnresolvedImport
+        import tomli as tomllib  # @UnresolvedImport
+
         return self._check_pyproject_toml_impl(tomllib)
 
     def check_pyproject_toml(self) -> bool:
-        """Delegator that picks the correct implementation based on Python version."""
+        """Delegator that picks the correct implementation based on Python
+        version."""
         if sys.version_info >= (3, 11):
             return self.check_pyproject_toml_py311()
         return self.check_pyproject_toml_py310()

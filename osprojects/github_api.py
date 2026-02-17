@@ -9,22 +9,21 @@ see https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-
     Unauthenticated Requests (Core API): 60 requests per hour.
     Search API (Authenticated): 30 requests per minute.
     Search API (Unauthenticated): 10 requests per minute.
-
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime
 import json
 import os
 import re
 import time
+from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
-from basemkit.yamlable import lod_storable
 import requests
-from backoff import on_exception, expo
-from ratelimit import limits, RateLimitException
+from backoff import expo, on_exception
+from basemkit.yamlable import lod_storable
+from ratelimit import RateLimitException, limits
 
 
 class GitHubApi:
@@ -57,11 +56,9 @@ class GitHubApi:
         )
         self.api_url = "https://api.github.com"
 
-    def get_cache_path(self,file_name:str):
-        """
-        get the cache path for the given file_name
-        """
-        cache_path = os.path.join(self.cache_dir,file_name)
+    def get_cache_path(self, file_name: str):
+        """Get the cache path for the given file_name."""
+        cache_path = os.path.join(self.cache_dir, file_name)
         return cache_path
 
     def load_access_token(self) -> str:
@@ -69,12 +66,12 @@ class GitHubApi:
         there."""
         # Specify the path to the access token file
         token_file_path = os.path.join(self.base_dir, "access_token.json")
-        token=None
+        token = None
         # Check if the file exists and read the token
         if os.path.exists(token_file_path):
             with open(token_file_path, "r") as token_file:
                 token_data = json.load(token_file)
-                token= token_data.get("access_token")
+                token = token_data.get("access_token")
 
         # Return None if no token file is found
         return token
@@ -111,7 +108,6 @@ class GitHubApi:
             raise Exception(err_msg)
 
         return response
-
 
     def repos_for_owner(self, owner: str, cache_expiry: int = 300) -> list[dict]:
         """Retrieve all repositories for the given owner, using cache if
@@ -270,11 +266,11 @@ class GitHubRepo:
                 params["page"] += 1
         return all_issues_records
 
+
 @lod_storable
 class GitHubFile:
-    """
-    a single Github file
-    """
+    """A single Github file."""
+
     repo_name: str
     path: str
     sha: str
@@ -286,26 +282,26 @@ class GitHubFile:
     @property
     def month_key(self) -> str:
         """Returns 'YYYY-MM' or 'Unknown'."""
-        month_key=None
+        month_key = None
         if self.created_at:
-            month_key=self.created_at.strftime("%Y-%m")
-        return  month_key
+            month_key = self.created_at.strftime("%Y-%m")
+        return month_key
+
 
 @lod_storable
 class GitHubFileSet:
-    """
-    A set of GitHubFiles
-    """
+    """A set of GitHubFiles."""
+
     # map files by sha
-    files: Dict[str,GitHubFile] = field(default_factory=dict)
+    files: Dict[str, GitHubFile] = field(default_factory=dict)
     _sha_set: set = field(default_factory=set)
 
     def add(self, api_item: dict) -> Optional[GitHubFile]:
-        """
-        Parses a raw API item and adds it to cache if unique.
+        """Parses a raw API item and adds it to cache if unique.
+
         Returns the item if added, None if duplicate.
         """
-        gh_file=None
+        gh_file = None
         sha = api_item.get("sha")
 
         # Deduplication check
@@ -319,7 +315,7 @@ class GitHubFileSet:
             raw_date = repo_info.get("created_at")
             if raw_date:
                 try:
-                    date_obj = datetime.fromisoformat(raw_date.replace('Z', '+00:00'))
+                    date_obj = datetime.fromisoformat(raw_date.replace("Z", "+00:00"))
                 except ValueError:
                     pass
 
@@ -329,7 +325,7 @@ class GitHubFileSet:
                 path=api_item.get("path", ""),
                 sha=sha,
                 html_url=api_item.get("html_url", ""),
-                created_at=date_obj
+                created_at=date_obj,
             )
 
             # Store in dict
@@ -339,12 +335,15 @@ class GitHubFileSet:
         return gh_file
 
     @classmethod
-    def from_query(cls,query: str, limit: int = 1000, verbose:bool=False) -> "GitHubFileSet":
-        """
-       Factory function to query GitHub Code Search and populate a GitHubFileSet.
+    def from_query(
+        cls, query: str, limit: int = 1000, verbose: bool = False
+    ) -> "GitHubFileSet":
+        """Factory function to query GitHub Code Search and populate a
+        GitHubFileSet.
+
         Handles pagination and rate limiting.
         """
-        github_api=GitHubApi.get_instance()
+        github_api = GitHubApi.get_instance()
         file_set = GitHubFileSet()
         per_page = 100
 
@@ -359,11 +358,7 @@ class GitHubFileSet:
                 break
 
             url = "https://api.github.com/search/code"
-            params = {
-                "q": query,
-                "per_page": per_page,
-                "page": page
-            }
+            params = {"q": query, "per_page": per_page, "page": page}
 
             try:
                 # Using the existing github_api instance passed in
@@ -385,6 +380,7 @@ class GitHubFileSet:
                 break
 
         return file_set
+
 
 @dataclass
 class GitHubAction:

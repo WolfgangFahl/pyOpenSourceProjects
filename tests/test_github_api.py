@@ -8,7 +8,6 @@ import time
 import unittest
 
 from osprojects.github_api import GitHubAction, GitHubApi, GitHubFileSet
-
 from tests.basetest import BaseTest
 
 
@@ -41,18 +40,17 @@ class TestGitHubApi(BaseTest):
                         repos[0], repos[trial], f"Cache was not used for {owner}"
                     )
 
-
-    @unittest.skipIf(BaseTest.inPublicCI(), "Must be authenticated to access the code search API")
+    @unittest.skipIf(
+        BaseTest.inPublicCI(), "Must be authenticated to access the code search API"
+    )
     def test_github_cff(self):
-        """
-        Retrieves cff files via untargeted search
-        """
-        limit=100 if self.inPublicCI() else 1000;
-        debug=self.debug
-        debug=True
-        verbose=True
-        github_api=GitHubApi.get_instance()
-        yaml_file=github_api.get_cache_path(f"git_cff_fileset{limit}.yaml")
+        """Retrieves cff files via untargeted search."""
+        limit = 100 if self.inPublicCI() else 1000
+        debug = self.debug
+        debug = True
+        verbose = True
+        github_api = GitHubApi.get_instance()
+        yaml_file = github_api.get_cache_path(f"git_cff_fileset{limit}.yaml")
         query = "filename:CITATION.cff"
 
         file_set = None
@@ -61,7 +59,9 @@ class TestGitHubApi(BaseTest):
         if os.path.isfile(yaml_file):
             print(f"Loading cached file set from: {yaml_file}")
             # Ensure your class has a load_from_yaml_file or similar method (standard for lod_storable)
-            file_set = GitHubFileSet.load_from_yaml_file(yaml_file) # @UndefinedVariable
+            file_set = GitHubFileSet.load_from_yaml_file(
+                yaml_file
+            )  # @UndefinedVariable
         else:
             print(f"Cache not found. Querying GitHub API: {query}")
             try:

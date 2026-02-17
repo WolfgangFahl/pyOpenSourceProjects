@@ -7,7 +7,6 @@ from argparse import Namespace
 
 from osprojects.check_project import CheckProject
 from osprojects.osproject import Commit, OsProject, Ticket, gitlog2wiki, main
-
 from tests.basetest import BaseTest
 
 

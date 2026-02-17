@@ -376,7 +376,7 @@ class OsProject:
     def getComments(self, issue_number: int) -> List[dict]:
         """Fetch all comments for a specific issue number from GitHub."""
         comments_url = self.commentUrl(issue_number)
-        gihub_api=GitHubApi.get_instance()
+        gihub_api = GitHubApi.get_instance()
         response = gihub_api.get_response("fetch comments", comments_url)
         return response.json()
 
