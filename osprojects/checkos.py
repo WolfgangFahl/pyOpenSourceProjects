@@ -3,6 +3,7 @@
 
 @author: wf
 """
+
 import argparse
 import logging
 import os
@@ -29,7 +30,11 @@ class CheckOS:
 
     @classmethod
     def from_args(cls, args: Namespace):
-        osprojects = OsProjects.from_folder(args.workspace, with_progress=True)
+        # Optimize: if --project and --local are both specified, pass project_id to avoid scanning all owners
+        project_id = args.project if (args.project and args.local) else None
+        osprojects = OsProjects.from_folder(
+            args.workspace, with_progress=True, project_id=project_id
+        )
         return cls(args, osprojects)
 
     def select_projects(self):

@@ -227,12 +227,18 @@ class OsProjects:
         return url
 
     @classmethod
-    def from_folder(cls, folder_path: str, with_progress: bool = False) -> "OsProjects":
+    def from_folder(
+        cls,
+        folder_path: str,
+        with_progress: bool = False,
+        project_id: Optional[str] = None,
+    ) -> "OsProjects":
         """Collect all github projects from the given folders.
 
         Args:
             folder_path (str): The path to the folder containing projects.
             with_progress (bool): Whether to display a progress bar. Defaults to True.
+            project_id (Optional[str]): If specified, optimize for finding this specific project.
 
         Returns:
             OsProjects: An instance of OsProjects with collected projects.
@@ -240,14 +246,33 @@ class OsProjects:
         osp = cls()
         owners, repos_by_folder = cls.github_repos_of_folder(folder_path)
 
+        # Optimization: If a specific project_id is requested, only fetch data for relevant owners
+        if project_id:
+            # Find which owner(s) have this project locally
+            relevant_owners = set()
+            for folder, repo in repos_by_folder.items():
+                if repo.project_id == project_id:
+                    relevant_owners.add(repo.owner)
+
+            # Only process relevant owners (no need for progress bar when optimized)
+            if relevant_owners:
+                owners_to_process = relevant_owners
+                # Don't show progress bar for optimized single-project lookup
+                with_progress = False
+            else:
+                # Project not found locally, fall back to processing all owners
+                owners_to_process = owners
+        else:
+            owners_to_process = owners
+
         def process_owners(owners_iterable: Iterable[str]):
             for owner in owners_iterable:
                 osp.add_projects_of_owner(owner)
 
         if with_progress:
-            process_owners(tqdm(owners, desc="Processing owners"))
+            process_owners(tqdm(owners_to_process, desc="Processing owners"))
         else:
-            process_owners(owners)
+            process_owners(owners_to_process)
 
         for folder, repo in repos_by_folder.items():
             project_url = repo.projectUrl()
@@ -321,7 +346,6 @@ class OsProject:
         return repo
 
     def getIssues(self, limit: int = None, **params) -> List[Ticket]:
-
         # Fetch the raw issue records using the new getIssueRecords method
         issue_records = self.repo.getIssueRecords(limit=limit, **params)
 
@@ -488,9 +512,7 @@ class OsProject:
             log["path"] = ""
             log["subject"] = subprocess.check_output(
                 [*gitLogCommitSubject, log["hash"]]
-            )[
-                :-1
-            ].decode()  # seperate query to avoid json escaping issues
+            )[:-1].decode()  # seperate query to avoid json escaping issues
             commit = Commit()
             for k, v in log.items():
                 setattr(commit, k, v)
