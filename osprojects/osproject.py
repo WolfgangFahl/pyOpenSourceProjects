@@ -514,7 +514,9 @@ class OsProject:
             log["path"] = ""
             log["subject"] = subprocess.check_output(
                 [*gitLogCommitSubject, log["hash"]]
-            )[:-1].decode()  # seperate query to avoid json escaping issues
+            )[
+                :-1
+            ].decode()  # seperate query to avoid json escaping issues
             commit = Commit()
             for k, v in log.items():
                 setattr(commit, k, v)
