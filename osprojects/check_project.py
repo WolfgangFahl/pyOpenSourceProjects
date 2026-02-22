@@ -138,7 +138,7 @@ class CheckProject:
                             msg=f"{min_python_version_minor} (build.yml)!={self.min_python_version_minor} (pyprojec.toml)",
                             path=file_path,
                         )
-                        python_versions = f"""python-version: [ {', '.join([f"'3.{i}'" for i in range(self.min_python_version_minor, self.max_python_version_minor+1)])} ]"""
+                        python_versions = f"""python-version: [ {", ".join([f"'3.{i}'" for i in range(self.min_python_version_minor, self.max_python_version_minor + 1)])} ]"""
                         self.add_content_check(
                             content,
                             python_versions,
@@ -238,7 +238,7 @@ class CheckProject:
                 readme_content, "readthedocs", readme_path, negative=True
             )
 
-    def _check_pyproject_toml(self, toml_module) -> bool:
+    def check_pyproject_toml_vialib(self, toml_module) -> bool:
         """Check pyproject.toml using the given toml_module."""
         toml_path = os.path.join(self.project_path, "pyproject.toml")
         toml_exists = self.add_path_check(toml_path)
@@ -283,13 +283,13 @@ class CheckProject:
         """Python 3.11+ implementation (uses stdlib tomllib)."""
         import tomllib
 
-        return self._check_pyproject_toml_impl(tomllib)
+        return self.check_pyproject_toml_vialib(tomllib)
 
     def check_pyproject_toml_py310(self) -> bool:
         """Python 3.10 implementation (uses third-party tomli)."""
         import tomli as tomllib  # @UnresolvedImport
 
-        return self._check_pyproject_toml_impl(tomllib)
+        return self.check_pyproject_toml_vialib(tomllib)
 
     def check_pyproject_toml(self) -> bool:
         """Delegator that picks the correct implementation based on Python

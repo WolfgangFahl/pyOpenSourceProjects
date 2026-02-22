@@ -275,6 +275,8 @@ class OsProjects:
             process_owners(owners_to_process)
 
         for folder, repo in repos_by_folder.items():
+            if project_id and repo.project_id != project_id:
+                continue
             project_url = repo.projectUrl()
             if project_url not in osp.projects_by_url:
                 logging.warning(f"{project_url} not found in projects_by_url")
