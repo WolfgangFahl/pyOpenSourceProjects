@@ -150,11 +150,11 @@ class CheckProject:
                             file_path,
                         )
                         self.add_content_check(
-                            content, "uses: actions/checkout@v4", file_path
+                            content, "uses: actions/checkout@v6", file_path
                         )
                         self.add_content_check(
                             content,
-                            "uses: actions/setup-python@v5",
+                            "uses: actions/setup-python@v6",
                             file_path,
                         )
 
@@ -171,11 +171,11 @@ class CheckProject:
                     elif file == "upload-to-pypi.yml":
                         self.add_content_check(content, "id-token: write", file_path)
                         self.add_content_check(
-                            content, "uses: actions/checkout@v4", file_path
+                            content, "uses: actions/checkout@v6", file_path
                         )
                         self.add_content_check(
                             content,
-                            "uses: actions/setup-python@v5",
+                            "uses: actions/setup-python@v6",
                             file_path,
                         )
                         self.add_content_check(

@@ -12,5 +12,5 @@ class Version(object):
     name = "pyOpenSourceProjects"
     version = osprojects.__version__
     date = "2024-07-31"
-    updated = "2026-02-22"
+    updated = "2026-03-14"  # keeping date; version now aligns to 0.5.1
     description = "Check python OpenSource Projects to follow standards for README, github workflow and pyproject.toml - creates badges"
