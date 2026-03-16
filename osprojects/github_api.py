@@ -25,6 +25,8 @@ from backoff import expo, on_exception
 from basemkit.yamlable import lod_storable
 from ratelimit import RateLimitException, limits
 
+from osprojects.git_api import GenericRepo
+
 
 class GitHubApi:
     """
@@ -96,9 +98,8 @@ class GitHubApi:
 
         if response.status_code == 302 and not allow_redirects:
             # Return the redirect URL if we're not following redirects
-            return response.headers["Location"]
-
-        if response.status_code not in [200, 302]:
+            result = response.headers["Location"]
+        elif response.status_code not in [200, 302]:
             err_msg = (
                 f"Failed to {title} for {url}: {response.status_code} - {response.text}"
             )
@@ -106,8 +107,9 @@ class GitHubApi:
             if response.status_code in [403, 429]:
                 raise RateLimitException(err_msg, period_remaining=60)
             raise Exception(err_msg)
-
-        return response
+        else:
+            result = response
+        return result
 
     def repos_for_owner(self, owner: str, cache_expiry: int = 300) -> list[dict]:
         """Retrieve all repositories for the given owner, using cache if
@@ -130,14 +132,14 @@ class GitHubApi:
         if cache_content is not None and (
             cache_age is None or cache_age < cache_expiry
         ):
-            return cache_content
+            repos = cache_content
+        else:
+            # If cache is not available or expired, retrieve from API
+            repos = self.repos_for_owner_via_api(owner)
 
-        # If cache is not available or expired, retrieve from API
-        repos = self.repos_for_owner_via_api(owner)
-
-        # Cache the result
-        with open(cache_file, "w") as f:
-            json.dump(repos, f)
+            # Cache the result
+            with open(cache_file, "w") as f:
+                json.dump(repos, f)
 
         return repos
 
@@ -200,28 +202,28 @@ class GitHubApi:
 
 
 @dataclass
-class GitHubRepo:
+class GitHubRepo(GenericRepo):
     """Represents a GitHub Repository.
 
     Attributes:
         owner (str): The owner of the repository.
         project_id (str): The name/id of the repository.
+        url (str): The original remote URL.
     """
-
-    owner: str
-    project_id: str
 
     def __post_init__(self):
         self.github = GitHubApi.get_instance()
 
     @classmethod
-    def from_url(cls, url: str) -> (str, str):
-        """Resolve project url to owner and project name.
+    def from_url(cls, url: str) -> "GitHubRepo":
+        """Resolve GitHub project url to owner and project name.
+
+        Args:
+            url: SSH or HTTPS GitHub remote URL.
 
         Returns:
-            (owner, project)
+            GitHubRepo instance or None if the URL cannot be parsed.
         """
-        # https://www.rfc-editor.org/rfc/rfc3986#appendix-B
         pattern = r"((https?:\/\/github\.com\/)|(git@github\.com:))(?P<owner>[^/?#]+)\/(?P<project_id>[^\./?#]+)(\.git)?"
         match = re.match(pattern=pattern, string=url)
         repo = None
@@ -229,17 +231,13 @@ class GitHubRepo:
             owner = match.group("owner")
             project_id = match.group("project_id")
             if owner and project_id:
-                repo = cls(owner=owner, project_id=project_id)
-            else:
-                pass
-        else:
-            pass
+                repo = cls(owner=owner, project_id=project_id, url=url)
         return repo
 
     def ticketUrl(self):
         return f"{self.github.api_url}/repos/{self.owner}/{self.project_id}/issues"
 
-    def projectUrl(self):
+    def projectUrl(self) -> str:
         return f"https://github.com/{self.owner}/{self.project_id}"
 
     def getIssueRecords(self, limit: int = None, **params) -> List[Dict]:
@@ -306,7 +304,6 @@ class GitHubFileSet:
 
         # Deduplication check
         if sha and not sha in self._sha_set:
-
             # Extract fields
             repo_info = api_item.get("repository", {})
 
@@ -433,7 +430,10 @@ class GitHubAction:
             raise ValueError("Invalid GitHub Actions URL format")
 
         try:
-            repo = GitHubRepo(owner=path_parts[1], project_id=path_parts[2])
+            owner = path_parts[1]
+            project_id = path_parts[2]
+            repo_url = f"https://github.com/{owner}/{project_id}"
+            repo = GitHubRepo(owner=owner, project_id=project_id, url=repo_url)
             return cls(repo=repo, run_id=int(path_parts[5]), job_id=int(path_parts[7]))
         except (IndexError, ValueError) as e:
             raise ValueError(f"Failed to parse GitHub Actions URL: {e}")

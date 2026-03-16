@@ -16,7 +16,9 @@ from typing import Dict, Iterable, List, Optional, Set, Tuple
 from dateutil.parser import parse
 from tqdm import tqdm
 
+from osprojects.git_api import GenericRepo
 from osprojects.github_api import GitHubApi, GitHubRepo
+from osprojects.gitlab_api import GitLabRepo
 
 
 class Ticket(object):
@@ -327,16 +329,24 @@ class OsProject:
         self.repo_info = None  # might be fetched
         self.folder = None  # set for local projects
         if owner and project_id:
-            self.repo = GitHubRepo(owner=owner, project_id=project_id)
+            url = f"https://github.com/{owner}/{project_id}"
+            self.repo = GitHubRepo(owner=owner, project_id=project_id, url=url)
 
     @classmethod
     def fromUrl(cls, url: str) -> "OsProject":
-        """Init OsProject from given url."""
+        """Init OsProject from given url.
+
+        Selects the appropriate repo class based on the remote URL host:
+        GitHubRepo for github.com, GitLabRepo for gitlab hosts,
+        GenericRepo for everything else.
+        """
+        os_project = cls()
         if "github.com" in url:
-            os_project = cls()
             os_project.repo = GitHubRepo.from_url(url)
+        elif "gitlab" in url:
+            os_project.repo = GitLabRepo.from_url(url)
         else:
-            raise Exception(f"url '{url}' is not a github.com url ")
+            os_project.repo = GenericRepo.from_url(url)
         return os_project
 
     @classmethod
@@ -514,9 +524,7 @@ class OsProject:
             log["path"] = ""
             log["subject"] = subprocess.check_output(
                 [*gitLogCommitSubject, log["hash"]]
-            )[
-                :-1
-            ].decode()  # seperate query to avoid json escaping issues
+            )[:-1].decode()  # seperate query to avoid json escaping issues
             commit = Commit()
             for k, v in log.items():
                 setattr(commit, k, v)

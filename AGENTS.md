@@ -162,7 +162,32 @@ except requests.RequestException as e:
 def process_items(items: list[dict], filter_key: str) -> Optional[list[str]]:
     """Process items and return filtered values."""
     values = [item.get(filter_key) for item in items if filter_key in item]
-    return values if values else None
+    result = values if values else None
+    return result
+```
+
+### Return Style
+
+- Never return expressions directly; always assign to a variable first
+- Avoid multiple return statements; use a single `return` at the end
+- Use a result variable and set it conditionally:
+```python
+# correct
+def get_value(flag: bool) -> Optional[str]:
+    result = None
+    if flag:
+        result = "yes"
+    return result
+
+# wrong - return expression
+def get_value(flag: bool) -> Optional[str]:
+    return "yes" if flag else None
+
+# wrong - multiple returns
+def get_value(flag: bool) -> Optional[str]:
+    if not flag:
+        return None
+    return "yes"
 ```
 
 ## Version Bumping
@@ -187,12 +212,12 @@ Then run formatters, tests, commit and push (or use `scripts/release`).
 
 ## Git Workflow
 
-1. Create a feature branch
+1. Read issue to work on
 2. Make changes following the code style guidelines
 3. Run formatters: `./scripts/blackisort`
 4. Run tests: `./scripts/test`
 5. Commit with a descriptive message
-6. Push and create a pull request
+6. Push
 
 ## Release
 
