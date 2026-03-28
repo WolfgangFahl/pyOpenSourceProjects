@@ -353,10 +353,15 @@ class OsProject:
     @classmethod
     def fromRepo(cls):
         """Init OsProject from repo in current working directory."""
-        url = subprocess.check_output(["git", "config", "--get", "remote.origin.url"])
-        url = url.decode().strip("\n")
-        repo = cls.fromUrl(url)
-        return repo
+        try:
+            url = subprocess.check_output(
+                ["git", "config", "--get", "remote.origin.url"]
+            )
+            url = url.decode().strip("\n")
+            repo = cls.fromUrl(url)
+            return repo
+        except subprocess.CalledProcessError:
+            return None
 
     def getIssues(self, limit: int = None, **params) -> List[Ticket]:
         # Fetch the raw issue records using the new getIssueRecords method
@@ -567,7 +572,7 @@ class GitLog2WikiCmd(BaseCmd):
             result = True
         else:
             osProject = OsProject.fromRepo()
-            if osProject.repo is None:
+            if osProject is None or osProject.repo is None:
                 try:
                     url = subprocess.check_output(
                         ["git", "config", "--get", "remote.origin.url"]
