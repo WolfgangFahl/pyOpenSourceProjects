@@ -35,10 +35,24 @@ class GenericRepo:
         Returns:
             GenericRepo instance or None if the URL cannot be parsed.
         """
-        pattern = (
-            r"(?:https?://[^/]+/|git@[^:]+:)(?P<owner>[^/]+)/(?P<project_id>[^/.]+)"
-        )
-        match = re.match(pattern, url)
+        # Match HTTPS: https://host/owner/repo
+        https_pattern = r"https?://[^/]+/(?P<owner>[^/]+)/(?P<project_id>[^/.]+)"
+        match = re.match(https_pattern, url)
+
+        if not match:
+            # Match SSH: [user@]host:path - extract last two path components as owner/repo
+            ssh_pattern = r"(?:[^@]+@)?[^:]+:(?P<path>.+?)(?:\.git)?$"
+            ssh_match = re.match(ssh_pattern, url)
+            if ssh_match:
+                path = ssh_match.group("path")
+                # Split path and take last two components
+                parts = [p for p in path.split("/") if p]
+                if len(parts) >= 2:
+                    owner = parts[-2]
+                    project_id = parts[-1]
+                    repo = cls(owner=owner, project_id=project_id, url=url)
+                    return repo
+
         repo = None
         if match:
             repo = cls(
@@ -50,7 +64,8 @@ class GenericRepo:
 
     def projectUrl(self) -> str:
         """Return a browsable HTTPS project URL derived from the remote URL."""
-        ssh = re.match(r"git@(?P<host>[^:]+):(?P<path>.+?)(?:\.git)?$", self.url)
+        # Match SSH URLs: user@host:path or host:path
+        ssh = re.match(r"(?:[^@]+@)?(?P<host>[^:]+):(?P<path>.+?)(?:\.git)?$", self.url)
         if ssh:
             url = f"https://{ssh.group('host')}/{ssh.group('path')}"
         else:

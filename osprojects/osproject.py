@@ -512,22 +512,18 @@ class OsProject:
             "--no-pager",
             "log",
             "--reverse",
-            r'--pretty=format:{"name":"%cn","date":"%cI","hash":"%h"}',
+            r'--pretty=format:{"name":"%cn","date":"%cI","hash":"%h","subject":"%s"}',
         ]
-        gitLogCommitSubject = ["git", "log", "--format=%s", "-n", "1"]
         rawCommitLogs = subprocess.check_output(gitlogCmd).decode()
         for rawLog in rawCommitLogs.split("\n"):
+            if not rawLog.strip():
+                continue
             log = json.loads(rawLog)
             if log.get("date", None) is not None:
                 log["date"] = datetime.datetime.fromisoformat(log["date"])
             log["project"] = self.project_id
             log["host"] = self.projectUrl()
             log["path"] = ""
-            log["subject"] = subprocess.check_output(
-                [*gitLogCommitSubject, log["hash"]]
-            )[
-                :-1
-            ].decode()  # seperate query to avoid json escaping issues
             commit = Commit()
             for k, v in log.items():
                 setattr(commit, k, v)
@@ -561,18 +557,36 @@ class GitLog2WikiCmd(BaseCmd):
             bool: True if handled.
         """
         handled = super().handle_args(args)
+        result = False
         if handled:
             result = True
         else:
             osProject = OsProject.fromRepo()
-            commits = osProject.getCommits()
-            if args.filter:
-                date_filter = args.filter
-                commits = [
-                    c for c in commits if str(c.date.date()).startswith(date_filter)
-                ]
-            print("\n".join([c.toWikiMarkup() for c in commits]))
-            result = True
+            if osProject.repo is None:
+                try:
+                    url = subprocess.check_output(
+                        ["git", "config", "--get", "remote.origin.url"]
+                    )
+                    url = url.decode().strip("\n")
+                    print(
+                        f"Error: Could not parse git remote URL: {url}",
+                        file=sys.stderr,
+                    )
+                except subprocess.CalledProcessError:
+                    print(
+                        "Error: Not in a git repository or no remote.origin.url configured",
+                        file=sys.stderr,
+                    )
+                result = False
+            else:
+                commits = osProject.getCommits()
+                if args.filter:
+                    date_filter = args.filter
+                    commits = [
+                        c for c in commits if str(c.date.date()).startswith(date_filter)
+                    ]
+                print("\n".join([c.toWikiMarkup() for c in commits]))
+                result = True
         return result
 
 
