@@ -507,26 +507,31 @@ class OsProject:
 
     def getCommits(self) -> List[Commit]:
         commits = []
+        # Use delimiter to separate fields to avoid JSON escaping issues with commit subjects
+        delimiter = "|||"
         gitlogCmd = [
             "git",
             "--no-pager",
             "log",
             "--reverse",
-            r'--pretty=format:{"name":"%cn","date":"%cI","hash":"%h","subject":"%s"}',
+            f"--pretty=format:%cn{delimiter}%cI{delimiter}%h{delimiter}%s",
         ]
         rawCommitLogs = subprocess.check_output(gitlogCmd).decode()
         for rawLog in rawCommitLogs.split("\n"):
             if not rawLog.strip():
                 continue
-            log = json.loads(rawLog)
-            if log.get("date", None) is not None:
-                log["date"] = datetime.datetime.fromisoformat(log["date"])
-            log["project"] = self.project_id
-            log["host"] = self.projectUrl()
-            log["path"] = ""
+            parts = rawLog.split(delimiter)
+            if len(parts) != 4:
+                continue
+            name, date_str, hash_val, subject = parts
             commit = Commit()
-            for k, v in log.items():
-                setattr(commit, k, v)
+            commit.name = name
+            commit.date = datetime.datetime.fromisoformat(date_str)
+            commit.hash = hash_val
+            commit.subject = subject
+            commit.project = self.project_id
+            commit.host = self.projectUrl()
+            commit.path = ""
             commits.append(commit)
         return commits
 
