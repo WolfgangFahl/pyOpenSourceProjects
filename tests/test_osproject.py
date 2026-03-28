@@ -76,7 +76,7 @@ class TestOsProject(BaseTest):
             return
         commit = self.getSampleById(Commit, "hash", "106254f")
         expectedCommitMarkup = commit.toWikiMarkup()
-        output = self.captureOutput(gitlog2wiki)
+        output = self.captureOutput(gitlog2wiki, [])
         outputLines = output.split("\n")
         self.assertTrue(expectedCommitMarkup in outputLines)
 

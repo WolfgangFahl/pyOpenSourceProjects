@@ -13,6 +13,7 @@ import subprocess
 import sys
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 
+from basemkit.base_cmd import BaseCmd
 from dateutil.parser import parse
 from tqdm import tqdm
 
@@ -524,7 +525,9 @@ class OsProject:
             log["path"] = ""
             log["subject"] = subprocess.check_output(
                 [*gitLogCommitSubject, log["hash"]]
-            )[:-1].decode()  # seperate query to avoid json escaping issues
+            )[
+                :-1
+            ].decode()  # seperate query to avoid json escaping issues
             commit = Commit()
             for k, v in log.items():
                 setattr(commit, k, v)
@@ -532,15 +535,55 @@ class OsProject:
         return commits
 
 
+class GitLog2WikiCmd(BaseCmd):
+    """Command line interface for gitlog2wiki."""
+
+    def add_arguments(self, parser):
+        """Add gitlog2wiki-specific arguments to the parser.
+
+        Args:
+            parser: The argument parser to extend.
+        """
+        super().add_arguments(parser)
+        parser.add_argument(
+            "--filter",
+            help="Filter commits by date prefix, e.g. 2026, 2026-03, 2026-03-28",
+            default=None,
+        )
+
+    def handle_args(self, args):
+        """Handle parsed arguments and run the command.
+
+        Args:
+            args: Parsed argument namespace.
+
+        Returns:
+            bool: True if handled.
+        """
+        handled = super().handle_args(args)
+        if handled:
+            result = True
+        else:
+            osProject = OsProject.fromRepo()
+            commits = osProject.getCommits()
+            if args.filter:
+                date_filter = args.filter
+                commits = [
+                    c for c in commits if str(c.date.date()).startswith(date_filter)
+                ]
+            print("\n".join([c.toWikiMarkup() for c in commits]))
+            result = True
+        return result
+
+
 def gitlog2wiki(_argv=None):
     """Cmdline interface to get gitlog entries in wiki markup."""
-    parser = argparse.ArgumentParser(description="gitlog2wiki")
-    if _argv:
-        _args = parser.parse_args(args=_argv)
+    from osprojects.version import Version
 
-    osProject = OsProject.fromRepo()
-    commits = osProject.getCommits()
-    print("\n".join([c.toWikiMarkup() for c in commits]))
+    argv = sys.argv[1:] if _argv is None else _argv
+    cmd = GitLog2WikiCmd(Version)
+    result = cmd.run(argv)
+    return result
 
 
 def main(_argv=None):

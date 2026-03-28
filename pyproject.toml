@@ -16,6 +16,8 @@ readme = "README.md"
 license = "Apache-2.0"
 
 dependencies = [
+  # https://github.com/WolfgangFahl/pybasemkit
+  "basemkit>=0.2.2",
   # https://pypi.org/project/beautifulsoup4/
   "beautifulsoup4>=4.14.2",
   # https://pypi.org/project/GitPython/
