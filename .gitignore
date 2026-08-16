@@ -129,3 +129,6 @@ dmypy.json
 .pyre/
 # no docs
 docs
+
+# macOS
+.DS_Store
