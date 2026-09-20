@@ -17,6 +17,7 @@ from basemkit.base_cmd import BaseCmd
 from dateutil.parser import parse
 from tqdm import tqdm
 
+from osprojects.forgejo_api import ForgejoRepo
 from osprojects.git_api import GenericRepo
 from osprojects.github_api import GitHubApi, GitHubRepo
 from osprojects.gitlab_api import GitLabRepo
@@ -128,8 +129,7 @@ class OsProjects:
         if project_id:
             if owners:
                 for owner in owners:
-                    key = f"https://github.com/{owner}/{project_id}"
-                    project = self.projects_by_url.get(key)
+                    project = self.projects.get(owner, {}).get(project_id)
                     if project:
                         self.add_selection(project)
             elif local_only:
@@ -182,8 +182,20 @@ class OsProjects:
         self.selected_projects = filtered_projects
         return self.selected_projects
 
+    def add_project(self, os_project: "OsProject"):
+        """Add the given project to the projects and projects_by_url lookups.
+
+        Args:
+            os_project: the project to add
+        """
+        owner = os_project.owner
+        if owner not in self.projects:
+            self.projects[owner] = {}
+        self.projects[owner][os_project.project_id] = os_project
+        self.projects_by_url[os_project.projectUrl()] = os_project
+
     def add_projects_of_owner(self, owner: str, cache_expiry: int = 300):
-        """Add the projects of the given owner."""
+        """Add the GitHub projects of the given owner."""
         if not owner in self.projects:
             self.projects[owner] = {}
             repo_infos = self.github.repos_for_owner(owner, cache_expiry)
@@ -191,11 +203,28 @@ class OsProjects:
                 project_id = repo_info["name"]
                 os_project = OsProject(owner=owner, project_id=project_id)
                 os_project.repo_info = repo_info
-                self.projects[owner][project_id] = os_project
-                self.projects_by_url[os_project.projectUrl()] = os_project
+                self.add_project(os_project)
         else:
             # owner already known
             pass
+
+    def add_local_project(self, repo: GenericRepo, folder: str) -> "OsProject":
+        """Add a local project of a forge without an accessible API - the
+        repository information is derived from the remote URL.
+
+        Args:
+            repo: the parsed repository
+            folder: the local folder of the project
+
+        Returns:
+            the added project
+        """
+        os_project = OsProject.of_repo(repo)
+        os_project.repo_info = repo.local_repo_info()
+        os_project.folder = folder
+        self.add_project(os_project)
+        self.local_projects[os_project.projectUrl()] = os_project
+        return os_project
 
     @classmethod
     def from_owners(cls, owners: list[str]):
@@ -247,7 +276,19 @@ class OsProjects:
             OsProjects: An instance of OsProjects with collected projects.
         """
         osp = cls()
-        owners, repos_by_folder = cls.github_repos_of_folder(folder_path)
+        owners, repos_by_folder = cls.repos_of_folder(folder_path)
+
+        # projects of forges without an accessible API are registered from
+        # their remote URL; GitHub projects are fetched per owner below
+        github_repos_by_folder = {}
+        for folder, repo in repos_by_folder.items():
+            if project_id and repo.project_id != project_id:
+                continue
+            if isinstance(repo, GitHubRepo):
+                github_repos_by_folder[folder] = repo
+            else:
+                osp.add_local_project(repo, folder)
+        repos_by_folder = github_repos_by_folder
 
         # Optimization: If a specific project_id is requested, only fetch data for relevant owners
         if project_id:
@@ -263,8 +304,9 @@ class OsProjects:
                 # Don't show progress bar for optimized single-project lookup
                 with_progress = False
             else:
-                # Project not found locally, fall back to processing all owners
-                owners_to_process = owners
+                # Project not found locally: nothing to fetch when it was
+                # registered from a non GitHub remote, else all owners
+                owners_to_process = set() if osp.local_projects else owners
         else:
             owners_to_process = owners
 
@@ -291,20 +333,20 @@ class OsProjects:
         return osp
 
     @classmethod
-    def github_repos_of_folder(
+    def repos_of_folder(
         cls, folder_path: str
-    ) -> Tuple[Set[str], Dict[str, GitHubRepo]]:
-        """Collect GitHub repositories from a given folder.
+    ) -> Tuple[Set[str], Dict[str, GenericRepo]]:
+        """Collect git repositories from a given folder.
 
         Args:
             folder_path (str): The path to the folder to search for repositories.
 
         Returns:
-            Tuple[Set[str], Dict[str, GitHubRepo]]: A tuple containing a set of owners
-            and a dictionary of repositories keyed by folder path.
+            Tuple[Set[str], Dict[str, GenericRepo]]: A tuple containing the set of
+            GitHub owners and a dictionary of repositories keyed by folder path.
         """
         all_folders = []
-        repos_by_folder: Dict[str, GitHubRepo] = {}
+        repos_by_folder: Dict[str, GenericRepo] = {}
         owners: Set[str] = set()
 
         for d in os.listdir(folder_path):
@@ -315,10 +357,11 @@ class OsProjects:
         for folder in all_folders:
             project_url = cls.get_project_url_from_git_config(folder)
             if project_url:
-                github_repo = GitHubRepo.from_url(project_url)
-                if github_repo:
-                    repos_by_folder[folder] = github_repo
-                    owners.add(github_repo.owner)
+                repo = OsProject.repo_of_url(project_url)
+                if repo:
+                    repos_by_folder[folder] = repo
+                    if isinstance(repo, GitHubRepo):
+                        owners.add(repo.owner)
 
         return owners, repos_by_folder
 
@@ -334,20 +377,51 @@ class OsProject:
             self.repo = GitHubRepo(owner=owner, project_id=project_id, url=url)
 
     @classmethod
-    def fromUrl(cls, url: str) -> "OsProject":
-        """Init OsProject from given url.
+    def repo_of_url(cls, url: str) -> Optional[GenericRepo]:
+        """Select the repo class fitting the forge of the given remote URL.
 
-        Selects the appropriate repo class based on the remote URL host:
-        GitHubRepo for github.com, GitLabRepo for gitlab hosts,
-        GenericRepo for everything else.
+        GitHubRepo for github.com, GitLabRepo for gitlab hosts, ForgejoRepo
+        for Forgejo instances, GenericRepo for everything else.
+
+        Args:
+            url: the git remote URL
+
+        Returns:
+            the parsed repository or None if the URL cannot be parsed
+        """
+        repo = None
+        parsed = GenericRepo.parse_url(url)
+        if parsed:
+            host = parsed["host"]
+            if host == "github.com":
+                repo = GitHubRepo.from_url(url)
+            elif "gitlab" in host:
+                repo = GitLabRepo.from_url(url)
+            elif ForgejoRepo.is_forgejo_host(host):
+                repo = ForgejoRepo.from_url(url)
+            else:
+                repo = GenericRepo.from_url(url)
+        return repo
+
+    @classmethod
+    def of_repo(cls, repo: GenericRepo) -> "OsProject":
+        """Init OsProject for the given repository.
+
+        Args:
+            repo: the repository
+
+        Returns:
+            the project
         """
         os_project = cls()
-        if "github.com" in url:
-            os_project.repo = GitHubRepo.from_url(url)
-        elif "gitlab" in url:
-            os_project.repo = GitLabRepo.from_url(url)
-        else:
-            os_project.repo = GenericRepo.from_url(url)
+        os_project.repo = repo
+        return os_project
+
+    @classmethod
+    def fromUrl(cls, url: str) -> "OsProject":
+        """Init OsProject from given url."""
+        os_project = cls()
+        os_project.repo = cls.repo_of_url(url)
         return os_project
 
     @classmethod
@@ -446,10 +520,7 @@ class OsProject:
 
     @property
     def url(self):
-        return (
-            self.repo_info.get("html_url")
-            or f"https://github.com/{self.repo.owner}/{self.project_id}"
-        )
+        return self.repo_info.get("html_url") or self.projectUrl()
 
     @property
     def description(self):

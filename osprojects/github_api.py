@@ -17,7 +17,7 @@ import re
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import ClassVar, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 import requests
@@ -211,6 +211,11 @@ class GitHubRepo(GenericRepo):
         url (str): The original remote URL.
     """
 
+    forge: ClassVar[str] = "GitHub"
+    workflows_dir: ClassVar[str] = ".github/workflows"
+    required_workflows: ClassVar[Tuple[str, ...]] = ("build.yml", "upload-to-pypi.yml")
+    os_needle: ClassVar[str] = "os: [ubuntu-latest, macos-latest, windows-latest]"
+
     def __post_init__(self):
         self.github = GitHubApi.get_instance()
 
@@ -239,6 +244,47 @@ class GitHubRepo(GenericRepo):
 
     def projectUrl(self) -> str:
         return f"https://github.com/{self.owner}/{self.project_id}"
+
+    def badge_lines(self, project_name: str) -> List[str]:
+        """The badge markdown lines a README.md of a GitHub project must
+        contain.
+
+        Args:
+            project_name: the name of the python package
+
+        Returns:
+            list of badge markdown lines
+        """
+        fqid = f"{self.owner}/{self.project_id}"
+        badge_lines = [
+            f"[![pypi](https://img.shields.io/pypi/pyversions/{project_name})](https://pypi.org/project/{project_name}/)",
+            f"[![Github Actions Build](https://github.com/{fqid}/actions/workflows/build.yml/badge.svg)](https://github.com/{fqid}/actions/workflows/build.yml)",
+            f"[![PyPI Status](https://img.shields.io/pypi/v/{project_name}.svg)](https://pypi.python.org/pypi/{project_name}/)",
+            f"[![GitHub issues](https://img.shields.io/github/issues/{fqid}.svg)](https://github.com/{fqid}/issues)",
+            f"[![GitHub closed issues](https://img.shields.io/github/issues-closed/{fqid}.svg)](https://github.com/{fqid}/issues/?q=is%3Aissue+is%3Aclosed)",
+            f"[![API Docs](https://img.shields.io/badge/API-Documentation-blue)](https://{self.owner}.github.io/{self.project_id}/)",
+            f"[![License](https://img.shields.io/github/license/{fqid}.svg)](https://www.apache.org/licenses/LICENSE-2.0)",
+        ]
+        return badge_lines
+
+    def badge_markdown(self, project_name: str) -> str:
+        """The badge table markdown for a README.md of a GitHub project.
+
+        Args:
+            project_name: the name of the python package
+
+        Returns:
+            markdown of the badge table
+        """
+        owner = self.owner
+        project_id = self.project_id
+        markup = f"""| | |
+| :--- | :--- |
+| **PyPi** | [![PyPI Status](https://img.shields.io/pypi/v/{project_name}.svg)](https://pypi.python.org/pypi/{project_name}/) [![License](https://img.shields.io/github/license/{owner}/{project_id}.svg)](https://www.apache.org/licenses/LICENSE-2.0) [![pypi](https://img.shields.io/pypi/pyversions/{project_name})](https://pypi.org/project/{project_name}/) [![format](https://img.shields.io/pypi/format/{project_name})](https://pypi.org/project/{project_name}/) [![downloads](https://img.shields.io/pypi/dd/{project_name})](https://pypi.org/project/{project_name}/) |
+| **GitHub** | [![Github Actions Build](https://github.com/{owner}/{project_id}/actions/workflows/build.yml/badge.svg)](https://github.com/{owner}/{project_id}/actions/workflows/build.yml) [![Release](https://img.shields.io/github/v/release/{owner}/{project_id})](https://github.com/{owner}/{project_id}/releases) [![Contributors](https://img.shields.io/github/contributors/{owner}/{project_id})](https://github.com/{owner}/{project_id}/graphs/contributors) [![Last Commit](https://img.shields.io/github/last-commit/{owner}/{project_id})](https://github.com/{owner}/{project_id}/commits/) [![GitHub issues](https://img.shields.io/github/issues/{owner}/{project_id}.svg)](https://github.com/{owner}/{project_id}/issues) [![GitHub closed issues](https://img.shields.io/github/issues-closed/{owner}/{project_id}.svg)](https://github.com/{owner}/{project_id}/issues/?q=is%3Aissue+is%3Aclosed) |
+| **Code** | [![style-black](https://img.shields.io/badge/%20style-black-000000.svg)](https://github.com/psf/black) [![imports-isort](https://img.shields.io/badge/%20imports-isort-%231674b1)](https://pycqa.github.io/isort/) |
+| **Docs** | [![API Docs](https://img.shields.io/badge/API-Documentation-blue)](https://{owner}.github.io/{project_id}/) [![formatter-docformatter](https://img.shields.io/badge/%20formatter-docformatter-fedcba.svg)](https://github.com/PyCQA/docformatter) [![style-google](https://img.shields.io/badge/%20style-google-3666d6.svg)](https://google.github.io/styleguide/pyguide.html#s3.8-comments-and-docstrings) |"""
+        return markup
 
     def getIssueRecords(self, limit: int = None, **params) -> List[Dict]:
         all_issues_records = []

@@ -14,7 +14,7 @@ from packaging import version
 
 # original at ngwidgets - use redundant local copy ...
 from osprojects.editor import Editor
-from osprojects.github_api import GitHubAction
+from osprojects.github_api import GitHubAction, GitHubRepo
 
 
 @dataclass
@@ -98,31 +98,23 @@ class CheckProject:
         return path_exists
 
     def generate_badge_markdown(self) -> str:
-        """Generate README.md badge table markup."""
-        project_name = self.project_name
-        owner = self.project.owner
-        project_id = self.project.project_id
-
-        markup = f"""| | |
-    | :--- | :--- |
-    | **PyPi** | [![PyPI Status](https://img.shields.io/pypi/v/{project_name}.svg)](https://pypi.python.org/pypi/{project_name}/) [![License](https://img.shields.io/github/license/{owner}/{project_id}.svg)](https://www.apache.org/licenses/LICENSE-2.0) [![pypi](https://img.shields.io/pypi/pyversions/{project_name})](https://pypi.org/project/{project_name}/) [![format](https://img.shields.io/pypi/format/{project_name})](https://pypi.org/project/{project_name}/) [![downloads](https://img.shields.io/pypi/dd/{project_name})](https://pypi.org/project/{project_name}/) |
-    | **GitHub** | [![Github Actions Build](https://github.com/{owner}/{project_id}/actions/workflows/build.yml/badge.svg)](https://github.com/{owner}/{project_id}/actions/workflows/build.yml) [![Release](https://img.shields.io/github/v/release/{owner}/{project_id})](https://github.com/{owner}/{project_id}/releases) [![Contributors](https://img.shields.io/github/contributors/{owner}/{project_id})](https://github.com/{owner}/{project_id}/graphs/contributors) [![Last Commit](https://img.shields.io/github/last-commit/{owner}/{project_id})](https://github.com/{owner}/{project_id}/commits/) [![GitHub issues](https://img.shields.io/github/issues/{owner}/{project_id}.svg)](https://github.com/{owner}/{project_id}/issues) [![GitHub closed issues](https://img.shields.io/github/issues-closed/{owner}/{project_id}.svg)](https://github.com/{owner}/{project_id}/issues/?q=is%3Aissue+is%3Aclosed) |
-    | **Code** | [![style-black](https://img.shields.io/badge/%20style-black-000000.svg)](https://github.com/psf/black) [![imports-isort](https://img.shields.io/badge/%20imports-isort-%231674b1)](https://pycqa.github.io/isort/) |
-    | **Docs** | [![API Docs](https://img.shields.io/badge/API-Documentation-blue)](https://{owner}.github.io/{project_id}/) [![formatter-docformatter](https://img.shields.io/badge/%20formatter-docformatter-fedcba.svg)](https://github.com/PyCQA/docformatter) [![style-google](https://img.shields.io/badge/%20style-google-3666d6.svg)](https://google.github.io/styleguide/pyguide.html#s3.8-comments-and-docstrings) |"""
+        """Generate README.md badge table markup for the forge of the
+        project."""
+        markup = self.project.repo.badge_markdown(self.project_name)
         return markup
 
     def check_local(self) -> Check:
         local = Check.file_exists(self.project_path)
         return local
 
-    def check_github_workflows(self):
-        """Check the github workflow files."""
-        workflows_path = os.path.join(self.project_path, ".github", "workflows")
+    def check_workflows(self):
+        """Check the CI workflow files of the forge of the project."""
+        repo = self.project.repo
+        workflows_path = os.path.join(self.project_path, repo.workflows_dir)
         workflows_exist = self.add_path_check(workflows_path)
 
         if workflows_exist.ok:
-            required_files = ["build.yml", "upload-to-pypi.yml"]
-            for file in required_files:
+            for file in repo.required_workflows:
                 file_path = os.path.join(workflows_path, file)
                 file_exists = self.add_path_check(file_path)
 
@@ -144,11 +136,7 @@ class CheckProject:
                             python_versions,
                             file_path,
                         )
-                        self.add_content_check(
-                            content,
-                            "os: [ubuntu-latest, macos-latest, windows-latest]",
-                            file_path,
-                        )
+                        self.add_content_check(content, repo.os_needle, file_path)
                         self.add_content_check(
                             content, "uses: actions/checkout@v6", file_path
                         )
@@ -218,20 +206,11 @@ class CheckProject:
             return
         if readme_exists.ok:
             readme_content = readme_exists.content
-            badge_lines = [
-                "[![pypi](https://img.shields.io/pypi/pyversions/{self.project_name})](https://pypi.org/project/{self.project_name}/)",
-                "[![Github Actions Build](https://github.com/{self.project.fqid}/actions/workflows/build.yml/badge.svg)](https://github.com/{self.project.fqid}/actions/workflows/build.yml)",
-                "[![PyPI Status](https://img.shields.io/pypi/v/{self.project_name}.svg)](https://pypi.python.org/pypi/{self.project_name}/)",
-                "[![GitHub issues](https://img.shields.io/github/issues/{self.project.fqid}.svg)](https://github.com/{self.project.fqid}/issues)",
-                "[![GitHub closed issues](https://img.shields.io/github/issues-closed/{self.project.fqid}.svg)](https://github.com/{self.project.fqid}/issues/?q=is%3Aissue+is%3Aclosed)",
-                "[![API Docs](https://img.shields.io/badge/API-Documentation-blue)](https://{self.project.owner}.github.io/{self.project.project_id}/)",
-                "[![License](https://img.shields.io/github/license/{self.project.fqid}.svg)](https://www.apache.org/licenses/LICENSE-2.0)",
-            ]
+            badge_lines = self.project.repo.badge_lines(self.project_name)
             for line in badge_lines:
-                formatted_line = line.format(self=self)
                 self.add_content_check(
                     content=readme_content,
-                    needle=formatted_line,
+                    needle=line,
                     path=readme_path,
                 )
             self.add_content_check(
@@ -332,19 +311,26 @@ class CheckProject:
                 not local_repo.is_dirty(), "uncomitted changes for", self.project_path
             )
 
-            # Check latest GitHub Actions workflow run
-            latest_run = GitHubAction.get_latest_workflow_run(self.project)
-            if latest_run:
-                self.add_check(
-                    latest_run["conclusion"] == "success",
-                    f"Latest GitHub Actions run: {latest_run['conclusion']}",
-                    latest_run["html_url"],
-                )
+            # Check latest workflow run - only the GitHub API is accessible
+            if isinstance(self.project.repo, GitHubRepo):
+                latest_run = GitHubAction.get_latest_workflow_run(self.project)
+                if latest_run:
+                    self.add_check(
+                        latest_run["conclusion"] == "success",
+                        f"Latest GitHub Actions run: {latest_run['conclusion']}",
+                        latest_run["html_url"],
+                    )
+                else:
+                    self.add_check(
+                        False,
+                        "No GitHub Actions runs found",
+                        self.project.repo.ticketUrl(),
+                    )
             else:
                 self.add_check(
-                    False,
-                    "No GitHub Actions runs found",
-                    self.project.repo.ticketUrl(),
+                    True,
+                    f"{self.project.repo.forge} workflow run state not checked - see the build badge of ",
+                    self.project.url,
                 )
 
         except InvalidGitRepositoryError:
@@ -363,7 +349,7 @@ class CheckProject:
         self.check_local()
         self.check_git()
         if self.check_pyproject_toml():
-            self.check_github_workflows()
+            self.check_workflows()
             self.check_readme()
             self.check_scripts()
 

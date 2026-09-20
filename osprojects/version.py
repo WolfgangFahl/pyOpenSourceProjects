@@ -12,6 +12,6 @@ class Version(object):
     name = "pyOpenSourceProjects"
     version = osprojects.__version__
     date = "2024-07-31"
-    updated = "2026-03-28"
+    updated = "2026-09-20"
     description = "Check python OpenSource Projects to follow standards for README, github workflow and pyproject.toml - creates badges"
     doc_url = "http://wiki.bitplan.com/index.php/pyOpenSourceProjects"
